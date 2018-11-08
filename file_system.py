@@ -51,7 +51,7 @@ class FileSystem():
         """
         pass
 
-    def file_property(self, pathname):
+    def fileProperty(self, pathname):
         """
         Te devuelve las propiedades del fichero especificado por el path
         """
