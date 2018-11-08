@@ -56,3 +56,10 @@ class FileSystem():
         Te devuelve las propiedades del fichero especificado por el path
         """
         pass
+
+    def isdir(self, pathname):
+        """
+        Devuelve True si lo indicado por el path es un directoria del file system
+        o FALSE en caso que no
+        """
+        pass
