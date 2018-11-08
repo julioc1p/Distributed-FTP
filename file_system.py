@@ -3,13 +3,13 @@ class FileSystem():
     Clase que define la estructura de un sistema de ficheros
     """
 
-    def list(self, path):
+    def list(self, pathname):
         """
         Lista los archivos que hay en el path
         """
         pass
 
-    def send(self, path):
+    def send(self, pathname):
         """
         Envia el archivo indicado en el path
         """
@@ -21,13 +21,13 @@ class FileSystem():
         """
         pass
 
-    def delete(self, path):
+    def delete(self, pathname):
         """
         Elimina el archivo indicado por el path
         """
         pass
 
-    def create(self, path):
+    def create(self, pathname):
         """
         Crea un nuevo archivo en el path indicado
         """
@@ -39,8 +39,14 @@ class FileSystem():
         """
         pass
 
-    def rename(self, path, new_name):
+    def rename(self, pathname, new_name):
         """
         Renombra el archivo designado por el path con el nuevo nombre
+        """
+        pass
+
+    def exists(self, pathname):
+        """
+        Comprueba si existe el path en el sistema
         """
         pass
