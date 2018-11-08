@@ -50,3 +50,9 @@ class FileSystem():
         Comprueba si existe el path en el sistema
         """
         pass
+
+    def file_property(self, pathname):
+        """
+        Te devuelve las propiedades del fichero especificado por el path
+        """
+        pass
