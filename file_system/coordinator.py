@@ -123,7 +123,7 @@ class Coordinator:
                 return i
 
     def nlist(self,file):
-        if file == '/':
+        if file == os.path.sep:
             file = ''
         dht = self.get_dht()
         c = rpyc.connect(dht[0], dht[1])
