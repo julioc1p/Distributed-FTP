@@ -1,0 +1,108 @@
+coordinator --> DEBUG - running coordinator at localhost:8001
+coordinator --> INFO - coordinator launched
+coordinator --> DEBUG - getting location for avatar.jpg
+coordinator --> DEBUG - avatar.jpg founded
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - running coordinator at localhost:8001
+coordinator --> INFO - coordinator launched
+coordinator --> DEBUG - getting location for avatar.jpg
+coordinator --> DEBUG - avatar.jpg founded
+coordinator --> DEBUG - avatar.jpg at {self.file_table[filename]}
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - running coordinator at localhost:8001
+coordinator --> INFO - coordinator launched
+coordinator --> DEBUG - getting location for avatar.jpg
+coordinator --> DEBUG - avatar.jpg founded
+coordinator --> DEBUG - avatar.jpg at [0, 2, 3, 4]
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - getting location for avatar.jpg
+coordinator --> DEBUG - avatar.jpg founded
+coordinator --> DEBUG - avatar.jpg at [0, 2, 3, 4]
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - getting location for avatar.jpg
+coordinator --> DEBUG - avatar.jpg founded
+coordinator --> DEBUG - avatar.jpg at [0, 2, 3, 4]
+coordinator --> INFO - get location --> ok
+minion --> INFO - minion launched on localhost at 8001
+minion --> DEBUG - writing block 1
+minion --> INFO - write avatar on 1 was ok
+minion --> DEBUG - reading block 1
+minion --> INFO - read of 1 successful
+minion --> INFO - minion launched on localhost at 8002
+minion --> DEBUG - writing block 2
+minion --> INFO - write  is awasome on 2 was ok
+minion --> INFO - minion launched on localhost at 8001
+minion --> INFO - minion launched on localhost at 8002
+coordinator --> DEBUG - running coordinator at localhost:8001
+coordinator --> INFO - coordinator launched
+coordinator --> DEBUG - running coordinator at localhost:8001
+coordinator --> DEBUG - getting location for avatar
+coordinator --> DEBUG - avatar founded
+coordinator --> DEBUG - avatar at [('localhost:8001', ['1']), ('localhost:8002', ['2'])]
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - getting location for avatar
+coordinator --> DEBUG - avatar founded
+coordinator --> DEBUG - avatar at [('localhost:8001', ['1']), ('localhost:8002', ['2'])]
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - getting location for avatar
+coordinator --> DEBUG - avatar founded
+coordinator --> DEBUG - avatar at [('localhost:8001', ['1']), ('localhost:8002', ['2'])]
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - getting location for avatar
+coordinator --> DEBUG - avatar founded
+coordinator --> DEBUG - avatar at [('localhost:8001', ['1']), ('localhost:8002', ['2'])]
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - getting location for avatar
+coordinator --> DEBUG - avatar founded
+coordinator --> DEBUG - avatar at [('localhost:8001', ['1']), ('localhost:8002', ['2'])]
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - getting location for avatar
+coordinator --> DEBUG - avatar founded
+coordinator --> DEBUG - avatar at [('localhost:8001', ['1']), ('localhost:8002', ['2'])]
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - getting location for avatar
+coordinator --> DEBUG - avatar founded
+coordinator --> DEBUG - avatar at [('localhost:8001', ['1']), ('localhost:8002', ['2'])]
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - getting location for avatar
+coordinator --> DEBUG - avatar founded
+coordinator --> DEBUG - avatar at [('localhost:8001', ['1']), ('localhost:8002', ['2'])]
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - getting location for avatar
+coordinator --> DEBUG - avatar founded
+coordinator --> DEBUG - avatar at [('localhost:8001', ['1']), ('localhost:8002', ['2'])]
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - getting location for avatar
+coordinator --> DEBUG - avatar founded
+coordinator --> DEBUG - avatar at [('localhost:8001', ['1']), ('localhost:8002', ['2'])]
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - getting location for avatar
+coordinator --> DEBUG - avatar founded
+coordinator --> DEBUG - avatar at [('localhost:8001', ['1']), ('localhost:8002', ['2'])]
+coordinator --> INFO - get location --> ok
+coordinator --> DEBUG - getting location for avatar
+coordinator --> DEBUG - avatar founded
+coordinator --> DEBUG - avatar at [('localhost:8001', ['1']), ('localhost:8002', ['2'])]
+coordinator --> INFO - get location --> ok
+minion --> DEBUG - reading block 1
+minion --> INFO - read of 1 successful
+minion --> DEBUG - reading block 2
+minion --> INFO - read of 2 successful
+coordinator --> DEBUG - getting location for avatar
+coordinator --> DEBUG - avatar founded
+coordinator --> DEBUG - avatar at [('localhost:8001', ['1']), ('localhost:8002', ['2'])]
+coordinator --> INFO - get location --> ok
+minion --> DEBUG - reading block 1
+minion --> INFO - read of 1 successful
+minion --> DEBUG - reading block 2
+minion --> INFO - read of 2 successful
+coordinator --> DEBUG - getting location for 6
+coordinator --> DEBUG - getting location for 6
+coordinator --> DEBUG - getting location for 6
+coordinator --> DEBUG - getting location for 6
+minion --> INFO - minion launched on localhost at 8000
+minion --> INFO - minion launched on localhost at 8001
+minion --> INFO - minion launched on localhost at 8002
+minion --> INFO - minion launched on localhost at 8000
+minion --> INFO - minion launched on localhost at 8002
+minion --> INFO - minion launched on localhost at 8003

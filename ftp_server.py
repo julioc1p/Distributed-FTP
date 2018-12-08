@@ -1,12 +1,15 @@
-from file_system import FileSystem
-from file_system_os import FileSystemOS 
+from file_system_ import FileSystem
+from file_system_os import FileSystemOS
+from threading import Thread 
+from file_system.coordinator import Coordinator
 import socket
-import os
+import os, sys
 import time
 
 HOST = '127.0.0.1'
-PORT = 21
-CWD = '/'
+PORT = 23230
+# CWD = os.getenv('HOME')
+CWD = os.path.sep
 
 
 def log(func, cmd):
@@ -14,10 +17,11 @@ def log(func, cmd):
         print("\033[31m%s\033[0m: \033[32m%s\033[0m" % (logmsg, cmd))
 
 
-class FTPServer:
+class FTPServer(Thread):
 
 
     def __init__(self, cmd_sock, address, file_system):
+        Thread.__init__(self)
         self.authenticated = False
         self.pasv_mode     = False
         self.rest          = False
@@ -145,47 +149,207 @@ class FTPServer:
 
         if not dirpath:
             pathname = self.cwd
-        elif dirpath.startswith('/'):
-            pathname = dirpath
         else:
-            pathname = os.path.join(self.cwd, dirpath)
+            pathname = os.path.abspath(os.path.join(self.cwd, dirpath))
 
         log('LIST', pathname)
-        if not self.authenticated:
-            self.sendCommand('530 User not logged in.\r\n')
 
-        elif not self.file_system.exists(pathname):
-            self.sendCommand('550 LIST failed Path name not exists.\r\n')
+        if not self.file_system.isdir(pathname):
+            self.sendCommand('550 LIST failed Path name not exist.\r\n')
 
         else:
             self.sendCommand('150 Here is listing.\r\n')
             self.startDataSock()
             if not self.file_system.isdir(pathname):
                 fileMessage = self.file_system.fileProperty(pathname)
-                self.dataSock.sock(fileMessage+'\r\n')
+                self.sendData(fileMessage+'\r\n')
 
             else:
-                for file in self.file_system.list(pathname):
-                    fileMessage = self.file_system.fileProperty(os.path.join(pathname, file))
-                    self.sendData(fileMessage+'\r\n')
+                fileMessage = self.file_system.list(pathname)
+                # for file in self.file_system.list(pathname):
+                #     fileMessage += self.file_system.fileProperty(os.path.join(pathname, file)) + '\n'
+                self.sendData(fileMessage +'\r\n')
             self.stopDataSock( )
             self.sendCommand('226 List done.\r\n')
 
+    def NLST(self, dirpath):
+        if not self.authenticated:
+            self.sendCommand('530 User not logged in.\r\n')
+            return
 
+        if not dirpath:
+            pathname = self.cwd
+        else:
+            pathname = os.path.abspath(os.path.join(self.cwd, dirpath))
 
+        log('LIST', pathname)
 
-def serverListener( ):
+        if not self.file_system.isdir(pathname):
+            self.sendCommand('550 LIST failed Path name not exist.\r\n')
+
+        else:
+            self.sendCommand('150 Here is listing.\r\n')
+            self.startDataSock()
+            if not self.file_system.isdir(pathname):
+                fileMessage = self.file_system.fileProperty(pathname)
+                self.sendData(fileMessage+'\r\n')
+
+            else:
+                fileMessage = self.file_system.nlist(pathname)
+                print(fileMessage)# for file in self.file_system.list(pathname):
+                #     fileMessage += self.file_system.fileProperty(os.path.join(pathname, file)) + '\n'
+                self.sendData(fileMessage +'\r\n')
+            self.stopDataSock( )
+            self.sendCommand('226 List done.\r\n')
+
+    def CWD(self, dirpath):
+        if not dirpath:
+            self.sendCommand('250 CWD Command successful.\r\n')
+            return
+
+        pathname = os.path.abspath(os.path.join(self.cwd, dirpath))
+        log('CWD', pathname)
+        if not self.file_system.isdir(pathname):
+            self.sendCommand('550 CWD failed Directory not exist.\r\n')
+            return
+        self.cwd = pathname
+        self.sendCommand('250 CWD Command successful.\r\n')
+
+    def CDUP(self, cmd):
+        self.cwd = os.path.abspath(os.path.join(self.cwd, '..'))
+        log('CDUP', self.cwd)
+        self.sendCommand('200 Ok.\r\n')
+
+    def MKD(self, dirname):
+        if not dirname:
+            self.sendCommand('550 MKD failed Directory, please introduce a dirname.\r\n')
+            return
+
+        pathname = os.path.abspath(os.path.join(self.cwd, dirname))
+        log('MKD', pathname)
+        if not self.authenticated:
+            self.sendCommand('530 User not logged in.\r\n')
+            return
+        print(pathname)
+        if self.file_system.isdir(pathname):
+            self.sendCommand('550 MKD failed Directory.\r\n')
+            return
+        #adaptar al nuevo file_system
+        else:
+            try:
+                self.file_system.mkdir(pathname)
+                self.sendCommand('257 "{}" Directory created.\r\n'.format(pathname))
+            except OSError:
+                self.sendCommand('550 MKD failed Directory "{}" already exist.\r\n'.format(pathname))
+
+    def RMD(self, dirname):
+        if not dirname:
+            self.sendCommand('550 RMDIR failed Directory not exist.\r\n')            
+            return
+
+        pathname = os.path.abspath(os.path.join(self.cwd, dirname))
+        log('RMD', pathname)
+        if not self.authenticated:
+            self.sendCommand('530 User not logged in.\r\n')
+
+        elif pathname == self.cwd:
+            self.sendCommand('550 RMDIR failed "{}" is you current Directory.\r\n'.format(pathname))
+
+        elif not self.file_system.isdir(pathname):
+            self.sendCommand('550 RMDIR failed Directory "{}" not exist.\r\n'.format(pathname))
+        else:
+            self.file_system.rmdir(pathname)
+            self.sendCommand('250 Directory deleted.\r\n')
+
+    def DELE(self, filename):
+        if not filename:
+            self.sendCommand('550 DELE failed FILE not exist.\r\n')            
+            return
+
+        pathname = os.path.abspath(os.path.join(self.cwd, filename))
+        log('DELE', pathname)
+        if not self.authenticated:
+            self.sendCommand('530 User not logged in.\r\n')
+
+        elif not self.file_system.exist(pathname):
+            self.sendCommand('550 DELE failed File {} not exist.\r\n'.format(pathname))
+
+        else:
+            self.file_system.remove(pathname)
+            self.sendCommand('250 File deleted.\r\n')
+
+    def RETR(self, filename):
+        pathname = os.path.abspath(os.path.join(self.cwd, filename))
+        log('RETR', pathname)
+        if not self.file_system.exist(pathname):
+            self.sendCommand('550 RETR failed File {} not exist.\r\n'.format(pathname))
+            return
+        mode = 'a'
+        if self.mode == 'I':
+            mode = 'b'
+        self.sendCommand('150 Opening data connection.\r\n')
+        self.startDataSock( )
+        while True:
+            data = self.file_system.read_file(pathname)
+            if not data: break
+            self.sendData(data.decode())
+        self.stopDataSock( )
+        self.sendCommand('226 Transfer complete.\r\n')
+
+    def STOR(self, filename):
+        if not self.authenticated:
+            self.sendCommand('530 STOR failed User not logged in.\r\n')
+            return
+
+        pathname = os.path.abspath(os.path.join(self.cwd, filename))
+        if pathname == os.path.sep:
+            self.sendCommand('501 STOR failed Directory "{}" can\'t be deleted.\r\n'.format(pathname))
+            return
+        log('STOR', pathname)
+        if not self.file_system.isdir(os.path.dirname(pathname)):
+            self.sendCommand('501 STOR failed Directory "{}" not exist.\r\n'.format(os.path.dirname(pathname)))
+            return
+        self.sendCommand('150 Opening data connection.\r\n' )
+        self.startDataSock( )
+        self.file_system.remove(pathname)
+        while True:
+            data = self.dataSock.recv(1024)
+            if not data: break
+            self.file_system.write_override(pathname, data)
+        self.file_system.write_override(pathname, None)
+        self.stopDataSock( )
+        self.sendCommand('226 Transfer completed.\r\n')
+
+    
+
+def start_ftp():
     global listen_sock
-    listen_sock = socket.socket()
+    listen_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    listen_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     listen_sock.bind((HOST, PORT))
     listen_sock.listen(5)
 
+def serverListener( ):
+    global listen_sock
+    start_ftp()
     log('Server started', 'Listen on: %s, %s' % listen_sock.getsockname( ))
     while True:
         connection, address = listen_sock.accept( )
         log('Accept', 'Created a new connection %s, %s' % address)
-        f = FTPServer(connection, address, FileSystemOS() )
-        f.run()
+        f = FTPServer(connection, address, Coordinator() )
+        f.start()
 
 
-serverListener()
+if __name__ == "__main__":
+    log('Start ftp server', 'Enter q or Q to stop ftpServer...')
+    listener = Thread(target=serverListener)
+    listener.start( )
+
+    if sys.version_info[0] < 3:
+        input = raw_input
+
+    message = input().lower()
+    if message == "q":
+        listen_sock.close( )
+        log('Server stop', 'Server closed')
+        sys.exit()
