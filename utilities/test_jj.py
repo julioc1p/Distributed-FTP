@@ -4,7 +4,7 @@ from threading import Thread
 import Pyro4
 import time
 import rpyc
-from dht import start_dht_service
+from name_dht import start_dht_service
 
 
 def convert(classname, dict):

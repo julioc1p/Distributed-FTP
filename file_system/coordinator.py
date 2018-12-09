@@ -86,15 +86,16 @@ def fileProperty(filepath):
 
 
 class Coordinator:
-    minios = [('localhost', 8000), ('localhost', 8001), ('localhost', 8002)]
+    minios_cache = [('localhost', 8000), ('localhost', 8001), ('localhost', 8002)]
     dht_cache = [('localhost', 23235),('localhost', 23237),('localhost', 23239)]
+    locks = []
     block_size = 5
     rep_factor = 3
 
     def __init__(self):
         self.package_count = 1
         if not self.exist(os.path.sep):
-            dht = self.get_dht()
+            dht = self.get_name()
             c = rpyc.connect(dht[0],dht[1])
             c.root.set_key(os.path.sep,'')
             c.close()
@@ -104,16 +105,19 @@ class Coordinator:
             pass
 
     def get_minions(self):
-        return random.sample(self.minios,1)
+        return random.sample(self.minions,1)
 
-    def get_dht(self):
+    def get_lock(self):
+        pass
+
+    def get_name(self):
         for i in self.dht_cache:
             if ping(i[0], i[1]):
                 return i
         return 'localhost', 23235
 
     def fileProperty(self,filename):
-        dht = self.get_dht()
+        dht = self.get_name()
         c = rpyc.connect(dht[0], dht[1])
         t = c.root.get_key(os.path.dirname(filename))[1]
         t = t.split('\n')
@@ -125,7 +129,7 @@ class Coordinator:
     def nlist(self,file):
         if file == os.path.sep:
             file = ''
-        dht = self.get_dht()
+        dht = self.get_name()
         c = rpyc.connect(dht[0], dht[1])
         t = c.root.get_key(file + os.path.sep)[1]
         te = t.split('\n')
@@ -135,49 +139,27 @@ class Coordinator:
         return f
 
     def list(self, file):
-        if file == '/':
+        if file == os.path.sep:
             file = ''
-        dht = self.get_dht()
+        dht = self.get_name()
         c = rpyc.connect(dht[0], dht[1])
         t = c.root.get_key(file + os.path.sep)[1]
         c.close()
         return t
 
-    def read_file(self, filename):
-        log.debug('getting location for %s', filename)
-        dht = self.get_dht()
-        file_table = rpyc.connect(dht[0], dht[1]).root.get_key(filename)
-        if filename is None:
-            return 'No File Found'
-        r = file_table[1]
-        hosts = {}
-        for part in r.split(';'):
-            block_location = part.split(':')
-            for h in block_location[1].split('@'):
-                host = h.split(',')
-                host = host[0], int(host[1])
-                if not ping(host[0], int(host[1])):
-                    continue
-                hosts[block_location[0]] = [host]
+    def read(self):
+        name_dht = self.get_name()
+        pass
 
-        hosts = list(hosts.values())
-
-        for i in len(hosts):
-            c = rpyc.connect(hosts[i][0], hosts[i][1])
-            r += c.root.read(filename + '.part' + str(i))
-            yield r
-            c.close()
-        return None
-
-#Pone '/' al filename
+#Pone os.path.sep al filename
     def isdir(self, filename):
         if filename == os.path.sep:
             return True
         return self.exist(filename + os.path.sep) 
 
-#pone '/' a filename
+#pone os.path.sep a filename
     def mkdir(self, filename):
-        dht = self.get_dht()
+        dht = self.get_name()
         c = rpyc.connect(dht[0], dht[1])
         #Agrega el filename/ al dht
         temp = filename + os.path.sep
@@ -200,53 +182,10 @@ class Coordinator:
         c.root.set_key(dir_name,info)
         c.close()
         
-    def write_override(self, filename, data):
+    def write(self, filename, data):
         o_name = os.path.basename(filename)
         o_dir = os.path.dirname(filename) + os.path.sep
-        dist = random.sample(self.get_minions(), min(
-            self.rep_factor, len(self.minios)))
-        c = rpyc.connect(dist[0][0], dist[0][1])
-        if data is None:
-            property_ = fileProperty(f'/tmp/dftp/{o_name}')
-            k = c.root.get_key(o_dir)[1]
-            if k == '':
-                k = property_
-            else:
-                k += '\n' + property_
-            c.root.set_key(o_dir, k)
-            os.remove(f'/tmp/dftp/{o_name}')
-            c.close()
-            return
-        c.root.write(filename + '.part' +
-                     str(self.package_count), data, dist[1:])
-        c.close()
-        try:
-            os.mkdir('/tmp/dftp')
-        except:
-            pass
-        f = open(f'/tmp/dftp/{o_name}', 'a+b')
-        f.write(data)
-        f.close()
-        dht = self.get_dht()
-        c = rpyc.connect(dht[0], dht[1])
-        t = c.root.get_key(filename)[1]
-        name = []
-        for i in dist:
-            name.append(i[0] + str(dist[1]))
-        name = '@'.join(name)
-        name = str(self.package_count) + name
-        if t is None:
-            c.root.set_key(filename, name)
-        else:
-            t += ';' + name
-            c.root.set_key(filename, t)
-        c.close()
-        self.package_count += 1
-
-    def write_append(self, filename, data):
-        o_name = os.path.basename(filename)
-        o_dir = os.path.dirname(filename) + os.path.sep
-        dist = random.sample(self.get_minions(), min(self.rep_factor, len(self.minios)))
+        dist = random.sample(self.get_minions(), min(self.rep_factor, len(self.minions)))
         c = rpyc.connect(dist[0][0], dist[0][1])
         if data is None:
             property_ = fileProperty(f'/tmp/dftp/{o_name}')
@@ -265,7 +204,7 @@ class Coordinator:
         f = open(f'/tmp/dftp/{o_name}', 'a+b')
         f.write(data)
         f.close()
-        dht = self.get_dht()
+        dht = self.get_name()
         c = rpyc.connect(dht[0], dht[1])
         t = c.root.get_key(filename)[1]
         name = []
@@ -280,7 +219,7 @@ class Coordinator:
 
 #no lleva palito
     def exist(self, key):
-        dht = self.get_dht()
+        dht = self.get_name()
         c = rpyc.connect(dht[0], dht[1])
         if c.root.get_key(key):
             return True
@@ -292,7 +231,7 @@ class Coordinator:
     #     return r
 
     def rename(self, oldname, newname):
-        dht = self.get_dht()
+        dht = self.get_name()
         c = rpyc.connect(dht[0], dht[1])
         key = c.root.remove_key(oldname)
         c.root.set_key(newname, key)
@@ -321,7 +260,7 @@ class Coordinator:
                     self.rmdir(dir)
                 else:
                     self.remove(dir)
-        dht = self.get_dht()
+        dht = self.get_name()
         print(path + os.path.sep)
         c = rpyc.connect(dht[0], dht[1])
         c.root.remove_key(path + os.path.sep)        
@@ -339,11 +278,11 @@ class Coordinator:
             a.append(i)
         a = '\n'.join(a)
         print(a)
-        dht = self.get_dht()
+        dht = self.get_name()
         rpyc.connect(dht[0], dht[1]).root.set_key(p, a)
 
     def remove(self, file):
-        dht = self.get_dht()
+        dht = self.get_name()
         file_table = rpyc.connect(dht[0], dht[1]).root.remove_key(file)
         r = file_table[1]
         r = file
@@ -367,3 +306,18 @@ class Coordinator:
                 c.root.remove(file + '.part' + i)
                 c.close()
         return None        
+
+    def open(self, filename, mode):
+        lock = self.get_lock()
+        connection_lock = rpyc.connect(lock[0], lock[1])
+        lock = connection_lock.root.get_key(filename)
+        if lock is None: 
+            return False
+        self.filename = filename
+        self.mode = mode
+        if mode[0] == 'w':
+            self.offset = 0
+        else:
+            self.offset = -1
+        return True
+

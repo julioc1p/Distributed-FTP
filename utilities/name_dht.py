@@ -9,44 +9,49 @@ NODE_AMOUNT = 1 << SIZE
 
 
 def start_dht_service(host):
-    dht_server = rpyc.ThreadedServer(DHTService(host), port=host.port+1)
+    PATH = f'{pathlib.Path.home()}/.dftp/names/'
+    dht_server = rpyc.ThreadedServer(DHTService(host, PATH), port=host.port + 1)
     print('\n', dht_server, '\n')
     dht_server.start()
 
 
 class DHTService(rpyc.Service):
 
-    def __init__(self, host):
-        self.chord_node = host
-        PATH = f'{pathlib.Path.home()}/.dftp/'
+    def __init__(self, host, PATH):
         DATA = PATH
         REPL = PATH
         hash = uhash(f'{host.ip}:{host.port}')
         DATA += str(hash) + '_data.json'
         REPL += str(hash) + '_repl.json'
+        self.chord_node = host
         self.l = Lock()
-        try:
-            os.mkdir(PATH)
-        except:
-            pass
-        try:
-            f = open(DATA, 'r')
-            f.close()
-        except:
-            f = open(DATA, 'w')
-            json.dump({}, f)
-            f.close()
-        try:
-            f = open(REPL, 'r')
-            f.close()
-        except:
-            f = open(REPL, 'w')
-            json.dump({}, f)
-            f.close()
+        self.path = PATH
         self.hash_table = DATA
         self.replicate = REPL
 
+    def launch_json(self):
+        try:
+            os.mkdir(f'{pathlib.Path.home()}/.dftp/')
+            os.mkdir(self.path)
+        except:
+            pass
+        try:
+            f = open(self.hash_table, 'r')
+            f.close()
+        except:
+            f = open(self.hash_table, 'w')
+            json.dump({}, f)
+            f.close()
+        try:
+            f = open(self.replicate, 'r')
+            f.close()
+        except:
+            f = open(self.replicate, 'w')
+            json.dump({}, f)
+            f.close()
+
     def open_json(self, dir):
+        self.launch_json()
         self.l.acquire()
         f = open(dir, 'r')
         aux = json.load(f)
@@ -55,6 +60,7 @@ class DHTService(rpyc.Service):
         return aux
 
     def save_json(self, dir, data):
+        self.launch_json()
         self.l.acquire()
         f = open(dir, 'w')
         json.dump(data, f)
@@ -161,6 +167,8 @@ class DHTService(rpyc.Service):
     def exposed_del_key(self, key):
         h = self.open_json(self.hash_table)
         print(key, h)
+        if key not h:
+            return None
         r = h.pop(key)
         print(r, h)
         self.save_json(self.hash_table,h)
