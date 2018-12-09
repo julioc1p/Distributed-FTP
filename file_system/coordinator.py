@@ -148,8 +148,48 @@ class Coordinator:
         return t
 
     def read(self):
+        if self.filename is None:
+            return None
+        lock_dht = self.get_lock()
+        connect_lock = rpyc.connect(lock_dht[0], lock_dht[1])
+        connect_lock.root.set_key(self.filename)
+        connect_lock.close()
         name_dht = self.get_name()
-        pass
+        connect_name = rpyc.connect(name_dht[0], name_dht[1])
+        list_name = connect_name.root.get_key(self.filename)[1]
+        connect_name.close()
+        hosts = {}
+        for part in list_name.split(';'):
+            block_id, block_location = part.split(':')
+            hosts[block_id] = []
+            host = block_location.split(',')
+            host = host[0], int(host[1])
+            hosts[block_id].append(host)
+        
+        for i in hosts:
+            host = None
+            for j in hosts[i]
+                if ping(j[0],j[1])
+                    host = hosts[i][j]
+            if host = None:
+                host = self.get_minions()
+            
+            connect_file = rpyc.connect(host[0], host[1])
+            data = connect_file.get_key(f'{self.filename}.part{i}')
+            connect_file.close()
+            if data:
+                if mode[-1] == 'b':
+                    yield data.encode()
+                else:
+                    yield data
+            else:
+                return None
+        
+        lock_dht = self.get_lock()
+        connect_lock.root.remove_key(self.filename)
+        lock_dht.close()
+        self.filename = None
+        return None
 
 #Pone os.path.sep al filename
     def isdir(self, filename):
@@ -182,13 +222,15 @@ class Coordinator:
         c.root.set_key(dir_name,info)
         c.close()
         
-    def write(self, filename, data):
-        o_name = os.path.basename(filename)
-        o_dir = os.path.dirname(filename) + os.path.sep
-        dist = random.sample(self.get_minions(), min(self.rep_factor, len(self.minions)))
-        c = rpyc.connect(dist[0][0], dist[0][1])
+    def write(self, data):
+        if self.filename is None:
+            return None
+        o_name = os.path.basename(self.filename)
+        o_dir = os.path.dirname(self.filename) + os.path.sep
         if data is None:
             property_ = fileProperty(f'/tmp/dftp/{o_name}')
+            name_dht = self.get_name()
+            c = c.connect(name_dht[0], name_dht[1])
             k = c.root.get_key(o_dir)[1]
             if k == '':
                 k = property_
@@ -197,23 +239,31 @@ class Coordinator:
             c.root.set_key(o_dir, k)
             os.remove(f'/tmp/dftp/{o_name}')
             c.close()
-            return
-        c.root.write(filename + '.part' + str(self.package_count), data, dist[1:])
+            lock_dht = self.get_lock()
+            c = rpyc.connect(lock_dht[0], lock_dht[1])
+            c.remove_key(self.filename)
+            self.filename = None
+            self.package_count = 1
+            return 
+
+        file_dht = self.get_minions()
+        c = rpyc.connect(file_dht[0], file_dht[1])
+        c.root.set_key(filename + '.part' + str(self.package_count), data)
         c.close()
         
-        f = open(f'/tmp/dftp/{o_name}', 'a+b')
+        f = open(f'/tmp/dftp/{o_name}', 'a'+self.mode[1:])
         f.write(data)
         f.close()
         dht = self.get_name()
         c = rpyc.connect(dht[0], dht[1])
         t = c.root.get_key(filename)[1]
-        name = []
-        for i in dist:
-            name.append(i[0] + ',' + str(dist[1]))
-        name = '@'.join(name)
-        name = str(self.package_count) + name
-        t += ';' + name
-        c.root.set_key(filename, t)
+        c.close()
+        r = f'{self.package_count}:{file_dht[0]},{file_dht[1]' 
+        if t != '':
+            r = t + ';' + i
+        name_dht = self.get_name()
+        c = rpyc.connect(name_dht[0], name_dht[1])
+        c.root.set_key(self.filename, r)
         c.close()
         self.package_count += 1
 
@@ -231,24 +281,56 @@ class Coordinator:
     #     return r
 
     def rename(self, oldname, newname):
+        lock_dht = self.get_lock()
+        c = rpyc.connect(lock_dht[0], lock_dht[1])
+        l = c.root.get_key(oldname)
+        c.close()
+        if not l is None:
+            return False
+        lock_dht = self.get_lock()
+        c = rpyc.connect(lock_dht[0], lock_dht[1])
+        l = c.root.set_key(oldname)
+        c.close()
         dht = self.get_name()
         c = rpyc.connect(dht[0], dht[1])
-        key = c.root.remove_key(oldname)
+        keys = c.root.remove_key(oldname)
         c.root.set_key(newname, key)
         c.close()
+        hosts = {}
+        for part in keys.split(';'):
+            block_id, block_location = part.split(':')
+            hosts[block_id] = []
+            host = block_location.split(',')
+            host = host[0], int(host[1])
+            hosts[block_id].append(host)
+        self.mode = 'w'
+        for i in hosts:
+            self.filename = oldname
+            data = self.read()
+            self.filename = newname
+            self.write(data)
+        self.filename = oldname
+        data = self.read()
+        self.filename = newname
+        self.write(data)
+        self.filename = None
+        self.package_count = 1
         d_name = os.path.dirname(newname)
         b_name = os.path.basename(newname)
         c = rpyc.connect(dht[0], dht[1])
         info = c.root.get_key(d_name).split('\n')
+        c.close()
         i = 0
         while i < len(info):
             info[i] = info[i].split(' ')
             c_name = ' '.join(info[i][8:])
             if c_name == b_name:
-                info[i] = info[i][0, 8] + b_name.split(' ')
+                info[i] = info[i][:8] + b_name.split(' ')
             info[i] = ' '.join(info[i])
         info = '\n'.join(info)
+        c = rpyc.connect(dht[0],dht[1])
         c.root.set_key(d_name, info)
+        c.close()
         
 
     def rmdir(self, path):
@@ -257,9 +339,11 @@ class Coordinator:
             for i in f:
                 dir = path + os.path.sep + i
                 if self.isdir(dir):
-                    self.rmdir(dir)
+                    if not self.rmdir(dir):
+                        return False
                 else:
-                    self.remove(dir)
+                    if not self.remove(dir):
+                        return False
         dht = self.get_name()
         c = rpyc.connect(dht[0], dht[1])
         c.root.remove_key(path + os.path.sep)        
@@ -277,44 +361,95 @@ class Coordinator:
             a.append(i)
         a = '\n'.join(a)
         dht = self.get_name()
-        rpyc.connect(dht[0], dht[1]).root.set_key(p, a)
+        c = rpyc.connect(dht[0], dht[1])
+        c.root.set_key(p, a)
+        return False
 
     def remove(self, file):
         dht = self.get_name()
-        file_table = rpyc.connect(dht[0], dht[1]).root.remove_key(file)
-        r = file_table[1]
+        lock_dht = self.get_lock()
+        c = rpyc.connect(lock_dht[0], lock_dht[1])
+        l = c.root.get_key(file)
+        c.close()
+        if not l is None:
+            return False
+        lock_dht = self.get_lock()
+        c = rpyc.connect(lock_dht[0], lock_dht[1])
+        c.root.set_key(file)
+        c.close()
+        name_dht = self.get_name()
+        c = rpyc.connect(name_dht[0], name_dht[1])
+        file_tale = c.root.get_key(file)
         r = file
         hosts = {}
-        for part in r.split(';'):
-            block_location = part.split(':')
-            for h in block_location[1].split('@'):
-                host = h.split(',')
-                host = tuple(host)
-                if not ping(host[0], int(host[1])):
-                    continue
-                if block_location[0] not in hosts:
-                    hosts[block_location[0]] = [host]
-                else:
-                    hosts[block_location[0]].append(host)
+        for part in list_name.split(';'):
+            block_id, block_location = part.split(':')
+            hosts[block_id] = []
+            host = block_location.split(',')
+            host = host[0], int(host[1])
+            hosts[block_id].append(host)
 
         for i in hosts:
-            for j in hosts[i]:
-                c = rpyc.connect(j[0], j[1])
-                c.root.remove(file + '.part' + i)
-                c.close()
-        return None        
+            lock_dht = self.get_lock()
+            c = rpyc.connect(lock_dht[0], lock_dht[1])
+            c.root.set_key(file)
+            c.close()
+            j = self.get_minions()
+            if ping(hosts[i][0], hosts[i][1]):
+                j = hosts[i]
+            c = rpyc.connect(j[0], j[1])
+            c.root.remove(file + '.part' + i)
+            c.close()
 
-    def open(self, filename, mode):
+        dht = self.get_name()
+        c = rpyc.connect(dht[0], dht[1])
+        file_tale = c.root.remove_key(file)
+        c.close()
+        p = os.path.dirname(file)
+        s = self.list(p)
+        if p != os.path.sep:
+            p += os.path.sep
+        s = s.split('\n')
+        b_name = os.path.basename(file)
+        a = []
+        for i in s:
+            t = ' '.join(i.split(' ')[8:])
+            if t == b_name:
+                continue
+            a.append(i)
+        a = '\n'.join(a)
+        dht = self.get_name()
+        c = rpyc.connect(dht[0], dht[1])
+        c.root.set_key(p, a)
+
+        return True        
+
+    def open(self, filename, mode):   
         lock = self.get_lock()
         connection_lock = rpyc.connect(lock[0], lock[1])
         lock = connection_lock.root.get_key(filename)
-        if lock is None: 
+        connection_lock.close()
+        if not lock is None and (mode[0] == 'w' or mode[0] == 'a'): 
             return False
+        if mode[0] == 'w':
+            self.remove(filename)
+        connection_lock = rpyc.connect(lock[0], lock[1])
+        connection_lock.root.set_key(filename)
+        connection_lock.close()
+
+        if mode[0] == 'a':
+            f = open(f'/tmp/dftp/{o_name}', 'w' + mode[1:])
+            while 1:
+                data = self.read(filename)
+                if data == 0:
+                    break
+                else:
+                    f.write(data)
+                    self.package_count += 1
+            f.close()
+        
+
         self.filename = filename
         self.mode = mode
-        if mode[0] == 'w':
-            self.offset = 0
-        else:
-            self.offset = -1
         return True
 
