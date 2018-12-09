@@ -14,7 +14,7 @@ def send_multicast(data):
     finally:
         sock.close()
 
-def recv_multicast(data):
+def recv_multicast():
     multicast_group = '224.3.29.71'
     server_address = ('', 10000)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -25,9 +25,8 @@ def recv_multicast(data):
         socket.IPPROTO_IP,
         socket.IP_ADD_MEMBERSHIP,
         mreq)
-    try:
-        data, address = sock.recvfrom(1024)
-        return data
+    data, address = sock.recvfrom(1024)
+    return data
 
 SIZE = 1 << 160
 

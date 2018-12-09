@@ -4,7 +4,7 @@ from threading import Thread
 import Pyro4
 import time
 import rpyc
-from name_dht import start_dht_service
+from name_dht import start_name_service
 
 
 def convert(classname, dict):
@@ -13,22 +13,8 @@ def convert(classname, dict):
 
 Pyro4.util.SerializerBase.register_dict_to_class('address.NodeKey', convert)
 
-
-def create_chord(add, follower):
-    node = Node(add, follower)
-    node.start()
-
-
-def create_dht(ip, port):
-    start_dht_service(NodeKey(ip, int(port)))
-
-
-def create_dht_chord(ip, port, follower=None):
-    td = Thread(target=create_dht, args=(ip, port))
-    td.start()
-    address = NodeKey(ip, int(port))
-    tc = Thread(target=create_chord, args=(address, follower))
-    tc.start()
+def create_dht_chord(ip, port):
+    start_name_service(ip, port)
 
 
 def set_key(key, value, port):
@@ -51,8 +37,8 @@ def get_backup(port):
 
 
 p1 = Thread(target=create_dht_chord, args=('192.168.1.132', 23234))
-p2 = Thread(target=create_dht_chord, args=('192.168.1.132', 23236, NodeKey('192.168.1.132', 23234)))
-p3 = Thread(target=create_dht_chord, args=('192.168.1.132', 23238, NodeKey('192.168.1.132', 23234)))
+p2 = Thread(target=create_dht_chord, args=('192.168.1.132', 23236))
+p3 = Thread(target=create_dht_chord, args=('192.168.1.132', 23238))
 
 p1.start()
 time.sleep(5)
