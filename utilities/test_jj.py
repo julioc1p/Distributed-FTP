@@ -13,8 +13,8 @@ def convert(classname, dict):
 
 Pyro4.util.SerializerBase.register_dict_to_class('address.NodeKey', convert)
 
-def create_dht_chord(ip, port):
-    start_name_service(ip, port)
+def create_dht_chord(ip, port, follower_ip=None, follower_port=None):
+    start_name_service(ip, port, follower_ip, follower_port)
 
 
 def set_key(key, value, port):
@@ -36,9 +36,9 @@ def get_backup(port):
     con.close()
 
 
-p1 = Thread(target=create_dht_chord, args=('192.168.1.132', 23234))
-p2 = Thread(target=create_dht_chord, args=('192.168.1.132', 23236))
-p3 = Thread(target=create_dht_chord, args=('192.168.1.132', 23238))
+p1 = Thread(target=create_dht_chord, args=('192.168.1.108', 23234))
+p2 = Thread(target=create_dht_chord, args=('192.168.1.108', 23236, '192.168.1.108', 23234))
+p3 = Thread(target=create_dht_chord, args=('192.168.1.108', 23238, '192.168.1.108', 23234))
 
 p1.start()
 time.sleep(5)
@@ -50,10 +50,10 @@ time.sleep(5)
 # get_key(13, 23235)
 
 p2.start()
-time.sleep(3)
+time.sleep(5)
 p3.start()
 
-time.sleep(3)
+time.sleep(5)
 
 # get_key(6, 23235)
 # get_key(15, 23235)

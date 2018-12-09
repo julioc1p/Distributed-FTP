@@ -14,5 +14,8 @@ sock.setsockopt(
     socket.IPPROTO_IP,
     socket.IP_ADD_MEMBERSHIP,
     mreq)
-data, address = sock.recvfrom(1024)
+try:
+    data, address = sock.recvfrom(1024)
 # return data
+except:
+    pass

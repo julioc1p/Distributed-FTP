@@ -1,9 +1,10 @@
 import hashlib
 import struct
 import sys
+import socket
 
 def send_multicast(data):
-    message = data
+    message = data.encode()
     multicast_group = ('224.3.29.71', 10000)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.settimeout(0.2)
@@ -26,7 +27,7 @@ def recv_multicast():
         socket.IP_ADD_MEMBERSHIP,
         mreq)
     data, address = sock.recvfrom(1024)
-    return data
+    return data.decode()
 
 SIZE = 1 << 160
 

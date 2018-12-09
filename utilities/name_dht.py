@@ -11,11 +11,11 @@ NODE_AMOUNT = 1 << SIZE
 
 
 def recv_MC(name):
-    i = 5
+    i = 10
     while i:
         try:
-            time.sleep(1)
             data = recv_multicast()
+            print(data)
             data = json.loads(data)
             if(data['name'] == f'{name}_chord'):
                 return data
@@ -24,7 +24,6 @@ def recv_MC(name):
     return None
 
 def create_dht(ip, port):
-    print(ip,port)
     host = address.NodeKey(ip, port)
     PATH = f'{pathlib.Path.home()}/.dftp/names/'
     dht_server = rpyc.ThreadedServer(DHTService(
@@ -32,15 +31,27 @@ def create_dht(ip, port):
     print('\n', dht_server, '\n')
     dht_server.start()
 
-def start_name_service(ip, port):
+def create_chord(name, host,follower): 
+    print(name, '\t\t', host, '\t\t', follower)
+    node = Node(name, host, follower)
+    node.start()
+    while 1:
+        time.sleep(5)
+        node.hey()
+
+def start_name_service(ip, port, follower_ip=None, follower_port=None):
 
     t = Thread(target=create_dht, args=(ip, port))
     t.start()
-    
+    time.sleep(2)
     host = address.NodeKey(ip, int(port))
-    follower = recv_MC('name')
-    if not follower is None:
-        follower = address.NodeKey(follower[ip], follower[port])
+    if follower_ip is None:
+        follower = None
+    else:
+        follower = address.NodeKey(follower_ip, follower_port)
+    # follower = recv_MC('name')
+    # if not follower is None:
+    #     follower = address.NodeKey(follower['ip'], follower['port'])
     tc = Thread(target=create_chord, args=('name_chord', host, follower))
     tc.start()
 
@@ -70,17 +81,20 @@ class DHTService(rpyc.Service):
         self.replicate = REPL
         Thread(target=self.send_MC).start()
 
-    @repeat_and_sleep(1)
+    @repeat_and_sleep(5)
     def send_MC(self):
         data = {'name': f'{self.name}_dht',
-                'ip': self.chord_node,
-                'port': str(self.chord_node+1)
+                'ip': self.chord_node.ip,
+                'port': str(self.chord_node.port + 1)
                 }
         send_multicast(json.dumps(data))
 
     def launch_json(self):
         try:
             os.mkdir(f'{pathlib.Path.home()}/.dftp/')
+        except:
+            pass
+        try:
             os.mkdir(self.path)
         except:
             pass
@@ -215,20 +229,16 @@ class DHTService(rpyc.Service):
 
     def exposed_del_key(self, key):
         h = self.open_json(self.hash_table)
-        print(key, h)
         if key not in h:
             return None
         r = h.pop(key)
-        print(r, h)
         self.save_json(self.hash_table,h)
         return r
 
     def exposed_remove_key(self, key):
-        print('entro a remover {key}')
         c = self.chord_node()
         h = c.find_successor(uhash(key))
         c = rpyc.connect(h.ip, port=h.port + 1)
-        print('va a remover {key}')
         has = c.root.del_key(key)
         c.close()
         return has

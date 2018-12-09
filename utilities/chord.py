@@ -96,10 +96,12 @@ class Node(object):
 
     def start(self):
         Deamon(self, 'start_local_server').start()
+        Deamon(self, 'inform').start()
         Deamon(self, 'fix_fingers').start()
         Deamon(self, 'stabilize').start()
         Deamon(self, 'update_successors').start()
         Deamon(self, 'replicate').start()
+        Deamon(self,  'discover').start()
         # Deamon(self, 'clear_replicate').start()
 
     def get_remote_node(self, address):
@@ -230,13 +232,13 @@ class Node(object):
         dht.root.clear()
         dht.close()
 
-    @repeat_and_sleep(5)
+    @repeat_and_sleep(1)
     def inform(self):
         data = json.dumps({'name':self.type, 'ip':self.address_.ip, 'port':self.address_.port
         , 'id':self.address_.id})
         send_multicast(data)
 
-    @repeat_and_sleep(5)
+    @repeat_and_sleep(1)
     def discover(self):
         try:
             data = json.loads(recv_multicast())

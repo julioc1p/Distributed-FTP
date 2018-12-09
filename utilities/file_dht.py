@@ -14,17 +14,21 @@ def start_dht_service(host):
     print('\n', dht_server, '\n')
     dht_server.start()
 
-def verify_lock(f):
-    def wrapper(self, lock, key, *args, **kawarg):
-        lock = self.get_lock()
-        lock = rpyc.connect(lock[0], lock[1])
-        l = lock.root.get_key(key)
-        if l == key:
-            l.close()
-            return None
-        r = f(self, lock, key, *args, **kwargs)
-        lock.root.remove_key(lock, key)
-    return f
+def verify_lock(mode):
+    def fun(f)
+        def wrapper(self, lock, key, *args, **kawarg):
+            lock = self.get_lock()
+            lock = rpyc.connect(lock[0], lock[1])
+            l = lock.root.get_key('.'.joint(key.split('.')[:-1]))
+            if not l and mode:
+                lock.close()
+                return None
+            r = f(self, lock, key, *args, **kwargs)
+            lock.root.remove_key(lock, key)
+            return f
+        return wrapper
+    return  fun
+        
 
 class file_dhtService(DHTService, rpyc.Service):
 
