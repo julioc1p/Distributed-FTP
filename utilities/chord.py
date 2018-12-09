@@ -5,7 +5,8 @@ import time
 import random
 import rpyc
 import sys
-from misc import uhash
+import json
+from misc import uhash, send_multicast, recv_multicast
 
 SIZE = 160
 NODESIZE = 1 << SIZE
@@ -57,9 +58,10 @@ class Deamon(Thread):
 @Pyro4.expose
 class Node(object):
 
-    def __init__(self, address, other_node=None):
+    def __init__(self, chord_type,address, other_node=None):
         self.address_ = address
         self.join(other_node)
+        self.type = chord_type
         self.successors_ = []
 
 
@@ -178,6 +180,7 @@ class Node(object):
             pass
         dht.close()
 
+    #pensar en dejar solo discover
     @repeat_and_sleep(1)
     # @retry(3)
     def stabilize(self):
@@ -226,6 +229,25 @@ class Node(object):
         dht = rpyc.connect(self.address_.ip, self.address_.port+1)
         dht.root.clear()
         dht.close()
+
+    @repeat_and_sleep(5)
+    def inform(self):
+        data = json.dumps({'name':self.type, 'ip':self.address_.ip, 'port':self.address_.port
+        , 'id':self.address_.id})
+        send_multicast(data)
+
+    @repeat_and_sleep(5)
+    def discover(self):
+        try:
+            data = json.loads(recv_multicast())
+            if data['name'] == self.type:
+                id = int(data['id'])
+                node = NodeKey(data['ip'], int(data['port']))
+                if self.inrange(id, self.id(), self.successor().id):
+                    self.finger_[0] = node
+                    self.successors_ = [self.finger_[0]] + self.successors_[:SUCCSSIZE-1]
+        except:
+            pass
 
     def hey(self):
         print('Hey!, I am node {}, my successor is {} and my predeccessor {}'

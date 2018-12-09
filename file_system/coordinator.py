@@ -261,7 +261,10 @@ class Coordinator:
                 else:
                     self.remove(dir)
         dht = self.get_name()
+<<<<<<< HEAD
         print(path + os.path.sep)
+=======
+>>>>>>> f8d61bb13a44758ff3374c616b4bfd3adb7b5012
         c = rpyc.connect(dht[0], dht[1])
         c.root.remove_key(path + os.path.sep)        
         p = os.path.dirname(path)
