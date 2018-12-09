@@ -106,3 +106,7 @@ minion --> INFO - minion launched on localhost at 8002
 minion --> INFO - minion launched on localhost at 8000
 minion --> INFO - minion launched on localhost at 8002
 minion --> INFO - minion launched on localhost at 8003
+minion --> ERROR - Too many arguments
+minion --> INFO - minion launched on localhost at 8000
+minion --> INFO - minion launched on localhost at 8001
+minion --> INFO - minion launched on localhost at 8002

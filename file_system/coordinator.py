@@ -322,7 +322,6 @@ class Coordinator:
                 else:
                     self.remove(dir)
         dht = self.get_dht()
-        print(path + os.path.sep)
         c = rpyc.connect(dht[0], dht[1])
         c.root.remove_key(path + os.path.sep)        
         p = os.path.dirname(path)
@@ -338,7 +337,6 @@ class Coordinator:
                 continue
             a.append(i)
         a = '\n'.join(a)
-        print(a)
         dht = self.get_dht()
         rpyc.connect(dht[0], dht[1]).root.set_key(p, a)
 
@@ -356,7 +354,6 @@ class Coordinator:
                 if not ping(host[0], int(host[1])):
                     continue
                 if block_location[0] not in hosts:
-                    print([host])
                     hosts[block_location[0]] = [host]
                 else:
                     hosts[block_location[0]].append(host)

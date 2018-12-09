@@ -6,7 +6,7 @@ import socket
 import os, sys
 import time
 
-HOST = '127.0.0.1'
+HOST = '0.0.0.0'
 PORT = 23230
 # CWD = os.getenv('HOME')
 CWD = os.path.sep
@@ -111,7 +111,7 @@ class FTPServer(Thread):
 
     def PWD(self, cmd):
         log('PWD', cmd)
-        self.sendCommand('257 "%s".\r\n' % self.cwd)
+        self.sendCommand('257 "{}".\r\n'.format(self.cwd))
 
     def TYPE(self, type):
         log('TYPE', type)
@@ -126,7 +126,7 @@ class FTPServer(Thread):
         self.pasv_mode  = True
         self.serverSock = socket.socket()
         # self.serverSock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.serverSock.bind((HOST, 0))
+        self.serverSock.bind((self.cmd_sock.getsockname()[0], 0))
         self.serverSock.listen(5)
         addr, port = self.serverSock.getsockname( )
         self.sendCommand('227 Entering Passive Mode (%s,%u,%u).\r\n' %
@@ -137,7 +137,7 @@ class FTPServer(Thread):
         if self.pasv_mode:
             self.serverSock.close()
             self.pasv_mode = False
-        l=cmd[5:].split(',')
+        l=cmd.split(',')
         self.dataSockAddr='.'.join(l[:4])
         self.dataSockPort=(int(l[4])<<8)+int(l[5])
         self.sendCommand('200 Get port.\r\n')
@@ -196,7 +196,7 @@ class FTPServer(Thread):
 
             else:
                 fileMessage = self.file_system.nlist(pathname)
-                print(fileMessage)# for file in self.file_system.list(pathname):
+                # for file in self.file_system.list(pathname):
                 #     fileMessage += self.file_system.fileProperty(os.path.join(pathname, file)) + '\n'
                 self.sendData(fileMessage +'\r\n')
             self.stopDataSock( )
@@ -216,7 +216,11 @@ class FTPServer(Thread):
         self.sendCommand('250 CWD Command successful.\r\n')
 
     def CDUP(self, cmd):
-        self.cwd = os.path.abspath(os.path.join(self.cwd, '..'))
+        pathname = os.path.abspath(os.path.join(self.cwd, '..'))
+        if not self.file_system.isdir(pathname):
+            self.sendCommand('550 CDUP failed Directory not exist.\r\n')
+            return
+        self.cwd = pathname
         log('CDUP', self.cwd)
         self.sendCommand('200 Ok.\r\n')
 
@@ -230,7 +234,6 @@ class FTPServer(Thread):
         if not self.authenticated:
             self.sendCommand('530 User not logged in.\r\n')
             return
-        print(pathname)
         if self.file_system.isdir(pathname):
             self.sendCommand('550 MKD failed Directory.\r\n')
             return
@@ -244,7 +247,7 @@ class FTPServer(Thread):
 
     def RMD(self, dirname):
         if not dirname:
-            self.sendCommand('550 RMDIR failed Directory not exist.\r\n')            
+            self.sendCommand('550 RMD failed Directory not exist.\r\n')            
             return
 
         pathname = os.path.abspath(os.path.join(self.cwd, dirname))
@@ -252,11 +255,10 @@ class FTPServer(Thread):
         if not self.authenticated:
             self.sendCommand('530 User not logged in.\r\n')
 
-        elif pathname == self.cwd:
-            self.sendCommand('550 RMDIR failed "{}" is you current Directory.\r\n'.format(pathname))
-
-        elif not self.file_system.isdir(pathname):
-            self.sendCommand('550 RMDIR failed Directory "{}" not exist.\r\n'.format(pathname))
+        if not self.file_system.isdir(pathname):
+            self.sendCommand('550 RMD failed Directory "{}" not exist.\r\n'.format(pathname))
+        elif not self.file_system.isdir(os.path.dirname(pathname)):
+            self.sendCommand('550 RMD failed Directory "{}" not exist.\r\n'.format(os.path.dirname(pathname)))
         else:
             self.file_system.rmdir(pathname)
             self.sendCommand('250 Directory deleted.\r\n')
@@ -297,21 +299,17 @@ class FTPServer(Thread):
         self.sendCommand('226 Transfer complete.\r\n')
 
     def STOR(self, filename):
+        print(filename)
         if not self.authenticated:
             self.sendCommand('530 STOR failed User not logged in.\r\n')
             return
 
         pathname = os.path.abspath(os.path.join(self.cwd, filename))
-        if pathname == os.path.sep:
-            self.sendCommand('501 STOR failed Directory "{}" can\'t be deleted.\r\n'.format(pathname))
-            return
         log('STOR', pathname)
-        if not self.file_system.isdir(os.path.dirname(pathname)):
-            self.sendCommand('501 STOR failed Directory "{}" not exist.\r\n'.format(os.path.dirname(pathname)))
-            return
+        
         self.sendCommand('150 Opening data connection.\r\n' )
         self.startDataSock( )
-        self.file_system.remove(pathname)
+        # self.file_system.remove(pathname)
         while True:
             data = self.dataSock.recv(1024)
             if not data: break
