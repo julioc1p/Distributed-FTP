@@ -96,12 +96,12 @@ class Node(object):
 
     def start(self):
         Deamon(self, 'start_local_server').start()
-        Deamon(self, 'inform').start()
+        # Deamon(self, 'inform').start()
         Deamon(self, 'fix_fingers').start()
         Deamon(self, 'stabilize').start()
         Deamon(self, 'update_successors').start()
         Deamon(self, 'replicate').start()
-        Deamon(self,  'discover').start()
+        # Deamon(self,  'discover').start()
         # Deamon(self, 'clear_replicate').start()
 
     def get_remote_node(self, address):

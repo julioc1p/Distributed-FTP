@@ -29,7 +29,7 @@ def recv_multicast():
     data, address = sock.recvfrom(1024)
     return data.decode()
 
-SIZE = 1 << 160
+SIZE = 1 << 19
 
 
 def uhash(data):

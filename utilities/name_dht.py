@@ -28,16 +28,16 @@ def create_dht(ip, port):
     PATH = f'{pathlib.Path.home()}/.dftp/names/'
     dht_server = rpyc.ThreadedServer(DHTService(
         'name', host, PATH), port=host.port + 1)
-    print('\n', dht_server, '\n')
+    print('\n', uhash(f'{ip}:{port+1}') , dht_server, '\n')
     dht_server.start()
 
 def create_chord(name, host,follower): 
     print(name, '\t\t', host, '\t\t', follower)
     node = Node(name, host, follower)
     node.start()
-    while 1:
-        time.sleep(5)
-        node.hey()
+    # while 1:
+    #     time.sleep(5)
+    #     node.hey()
 
 def start_name_service(ip, port, follower_ip=None, follower_port=None):
 
@@ -79,6 +79,7 @@ class DHTService(rpyc.Service):
         self.path = PATH
         self.hash_table = DATA
         self.replicate = REPL
+        self.launch_json()
         Thread(target=self.send_MC).start()
 
     @repeat_and_sleep(5)
@@ -210,7 +211,9 @@ class DHTService(rpyc.Service):
 
     def exposed_get_key(self, key):
         c = self.chord_node()
+        print('casi find successor')
         h = c.find_successor(uhash(key))
+        print('get key')
         c = rpyc.connect(h.ip, port=h.port + 1)
         has = c.root.hash_table()
         key = str(key)

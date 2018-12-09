@@ -299,7 +299,7 @@ class FTPServer(Thread):
         self.sendCommand('226 Transfer complete.\r\n')
 
     def STOR(self, filename):
-        print(filename)
+        # print(filename)
         if not self.authenticated:
             self.sendCommand('530 STOR failed User not logged in.\r\n')
             return
@@ -309,12 +309,21 @@ class FTPServer(Thread):
         
         self.sendCommand('150 Opening data connection.\r\n' )
         self.startDataSock( )
-        # self.file_system.remove(pathname)
+        # self.file_system.remove(pathname)\
+        mode = 'w'
+        if self.mode == 'I':
+            mode+='+b'
+        if not self.file_system.open(pathname, mode):
+            self.sendCommand('450 STOR failed File {} bloqued.\r\n'.format(pathname))
+            return
+        # print('file openado')
         while True:
             data = self.dataSock.recv(1024)
+            # print('recive {}'.format(data))
             if not data: break
-            self.file_system.write_override(pathname, data)
-        self.file_system.write_override(pathname, None)
+            self.file_system.write(data)
+            # print('guarde')
+        self.file_system.write(None)
         self.stopDataSock( )
         self.sendCommand('226 Transfer completed.\r\n')
 
