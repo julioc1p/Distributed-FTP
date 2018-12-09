@@ -260,12 +260,7 @@ class Coordinator:
                     self.rmdir(dir)
                 else:
                     self.remove(dir)
-<<<<<<< HEAD
-        dht = self.get_dht()
-=======
         dht = self.get_name()
-        print(path + os.path.sep)
->>>>>>> 04baeb7d20fd7efb0d84f25d3bc77b0da45f9f59
         c = rpyc.connect(dht[0], dht[1])
         c.root.remove_key(path + os.path.sep)        
         p = os.path.dirname(path)
@@ -281,12 +276,7 @@ class Coordinator:
                 continue
             a.append(i)
         a = '\n'.join(a)
-<<<<<<< HEAD
-        dht = self.get_dht()
-=======
-        print(a)
         dht = self.get_name()
->>>>>>> 04baeb7d20fd7efb0d84f25d3bc77b0da45f9f59
         rpyc.connect(dht[0], dht[1]).root.set_key(p, a)
 
     def remove(self, file):
