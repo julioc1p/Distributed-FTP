@@ -126,7 +126,7 @@ class Coordinator:
         f = " ".join(te[0].split(' ')[8:])
         for i in te[1:]:
             f += '\n' + " ".join(i.split(' ')[8:])
-        return f
+        return f.encode()
 
     def list(self, file):
         if file == os.path.sep:
@@ -135,14 +135,14 @@ class Coordinator:
         c = rpyc.connect(dht[0], dht[1])
         t = c.root.get_key(file + os.path.sep)[1]
         c.close()
-        return t
+        return t.encode()
 
     def read(self):
         if self.filename is None:
             return None
         lock_dht = self.get_lock()
         connect_lock = rpyc.connect(lock_dht[0], lock_dht[1])
-        connect_lock.root.set_key(self.filename)
+        connect_lock.root.lock(self.filename, 1)
         connect_lock.close()
         name_dht = self.get_name()
         connect_name = rpyc.connect(name_dht[0], name_dht[1])
@@ -154,29 +154,31 @@ class Coordinator:
             host = block_location.split(',')
             host = host[0], int(host[1])
             hosts[block_id] = host
-        
         for i in hosts:
-            host = None
-            for j in hosts[i]:
-                if ping(j[0],j[1]):
-                    host = hosts[i][j]
-            if host == None:
+            lock_dht = self.get_lock()
+            connect_lock = rpyc.connect(lock_dht[0], lock_dht[1])
+            connect_lock.root.lock(self.filename, 1)
+            connect_lock.close()
+            host = hosts[i]
+            if not ping(host[0], host[1]):
                 host = self.get_minions()
             
             connect_file = rpyc.connect(host[0], host[1])
-            data = connect_file.get_key(f'{self.filename}.part{i}')
+            data = connect_file.root.get_key(f'{self.filename}.part{i}')[1]
             connect_file.close()
             if data:
-                if mode[-1] == 'b':
-                    yield data.encode()
+                if self.mode[-1] == 'b':
+                    t = data.encode()
+                    yield t
                 else:
                     yield data
             else:
                 return None
         
         lock_dht = self.get_lock()
-        connect_lock.root.remove_key(self.filename)
-        lock_dht.close()
+        connect_lock = rpyc.connect(lock_dht[0], lock_dht[1])
+        connect_lock.root.remove_lock(self.filename, 1)
+        connect_lock.close()
         self.filename = None
         return None
 
@@ -236,7 +238,7 @@ class Coordinator:
 
             lock = self.get_lock()
             c = rpyc.connect(lock[0], lock[1])
-            c.root.remove_key(self.lock, self.filename)
+            c.root.remove_lock(self.filename, 2)
             c.close()
 
             self.filename = None
@@ -247,25 +249,21 @@ class Coordinator:
             data = data.decode()
         lock_dht = self.get_lock()
         c = rpyc.connect(lock_dht[0], lock_dht[1])
-        lock = c.root.get_key(self.filename)
+        c.root.lock(self.filename, 2)
         c.close()
-        if not lock is None:
-            self.lock = lock
-        file_dht = self.get_minions()
-        c = rpyc.connect(file_dht[0], file_dht[1])
         if data is bytes: 
             t = data.decode()
         else:
             t = data
-        c.root.set_key(self.lock, self.filename + '.part' + str(self.package_count), t)
+        file_dht = self.get_minions()
+        c = rpyc.connect(file_dht[0], file_dht[1])
+        c.root.set_key(self.filename + '.part' + str(self.package_count), t)
 
         c.close()
         lock_dht = self.get_lock()
         c = rpyc.connect(lock_dht[0], lock_dht[1])
-        lock = c.root.get_key(self.filename)
+        c.root.lock(self.filename, 2)
         c.close()
-        if not lock is None:
-            self.lock = lock
         f = open(f'/tmp/dftp/{o_name}', 'a'+self.mode[1:])
         if self.mode[-1] == 'b':
             f.write(data.encode())
@@ -302,6 +300,7 @@ class Coordinator:
     def rename(self, oldname, newname):
         lock_dht = self.get_lock()
         c = rpyc.connect(lock_dht[0], lock_dht[1])
+        #frase: 'dejame ese a mi !!!!, jj'
         l = c.root.get_key(oldname)
         c.close()
         if not l is None:
@@ -352,7 +351,9 @@ class Coordinator:
         
 
     def rmdir(self, path):
-        f = self.nlist(path).split('\n')
+        f = self.nlist(path)
+        f = f.decode()
+        f = f.split('\n')
         if not f == [""]:
             for i in f:
                 dir = path + os.path.sep + i
@@ -367,6 +368,7 @@ class Coordinator:
         c.root.remove_key(path + os.path.sep)        
         p = os.path.dirname(path)
         s = self.list(p)
+        s = s.decode()
         if p != os.path.sep:
             p+=os.path.sep
         s = s.split('\n')
@@ -386,7 +388,6 @@ class Coordinator:
     def remove(self, file):
         if not self.exist(file):
             return False
-        print('exist')
         dht = self.get_name()
         name_dht = self.get_name()
         c = rpyc.connect(name_dht[0], name_dht[1])
@@ -395,32 +396,28 @@ class Coordinator:
             return False
         hosts = {}
         file_tale = file_tale[1]
-        lock_dht = self.get_lock()
+        lock_dht = self.get_lock()             
         c = rpyc.connect(lock_dht[0], lock_dht[1])
-        l = c.root.get_key(file)
+        l = c.root.lock(file, 3)
         c.close()
-        if l is None:
+        if not l:
             return False
         for part in file_tale.split(';'):
-            print(part)
             block_id, block_location = part.split(':')
             host = block_location.split(',')
             host = host[0], int(host[1])
             hosts[block_id] = host
 
-        print(hosts)
         for i in hosts:
             lock_dht = self.get_lock()
             c = rpyc.connect(lock_dht[0], lock_dht[1])
-            l_t = c.root.get_key(file)
+            l_t = c.root.lock(file, 3)
             c.close()
-            if not l_t is None:
-                l = l_t
             j = self.get_minions()
             if ping(hosts[i][0], hosts[i][1]):
                 j = hosts[i]
             c = rpyc.connect(j[0], j[1])
-            c.root.remove_key(l, file + '.part' + i)
+            c.root.remove_key(file + '.part' + i)
             c.close()
 
         dht = self.get_name()
@@ -429,6 +426,7 @@ class Coordinator:
         c.close()
         p = os.path.dirname(file)
         s = self.list(p)
+        s = s.decode()
         if p != os.path.sep:
             p += os.path.sep
         s = s.split('\n')
@@ -446,21 +444,23 @@ class Coordinator:
 
         lock_dht = self.get_lock()
         c = rpyc.connect(lock_dht[0], lock_dht[1])
-        l = c.root.remove_key(l, file)
+        l = c.root.remove_lock(file, 3)
         c.close()
-        print('liberado')
         return True        
 
     def open(self, filename, mode):   
         self.filename = filename
         self.mode = mode
+        flag = 1
         if mode[0] == 'w':
             self.remove(filename)
+            flag = 2
         lock = self.get_lock()
         connection_lock = rpyc.connect(lock[0], lock[1])
-        self.lock = connection_lock.root.get_key(filename)
+        lock = connection_lock.root.lock(filename, flag)
         connection_lock.close()
-        if self.lock is None and (mode[0] == 'w' or mode[0] == 'a'): 
+        # if self.lock is None and (mode[0] == 'w' or mode[0] == 'a'):
+        if not lock:  
             return False        
         o_name = os.path.basename(filename)
         if mode[0] == 'a':

@@ -15,7 +15,6 @@ def recv_MC(name):
     while i:
         try:
             data = recv_multicast()
-            print(data)
             data = json.loads(data)
             if(data['name'] == f'{name}_chord'):
                 return data
@@ -128,8 +127,8 @@ class DHTService(rpyc.Service):
         self.l.acquire()
         f = open(dir, 'w')
         json.dump(data, f)
-        f.close()
         self.l.release()
+        f.close()
 
     def exposed_verify_interval(self, min, max):
         aux = {}
@@ -169,19 +168,15 @@ class DHTService(rpyc.Service):
         keys = json.loads(keys)
         hash_table = self.open_json(self.hash_table)
         for i in keys:
-            self.l.acquire()
             if i not in hash_table or int(hash_table[i][0]) > keys[i][0]:
                 hash_table[i] = keys[i]
-            self.l.release()
         self.save_json(self.hash_table, keys)
 
     def exposed_backup(self, data):
         replicate = self.open_json(self.replicate)
         for i in data:
-            self.l.acquire()
             if i not in replicate or int(replicate[i][0]) < int(data[i][0]):
                 replicate[i] = data[i]
-            self.l.release()
         self.save_json(self.replicate, replicate)
 
     def exposed_start_backup(self, dhts):
@@ -200,20 +195,16 @@ class DHTService(rpyc.Service):
 
     def exposed_set(self, key, value):
         hash_table = self.open_json(self.hash_table)
-        self.l.acquire()
         key = str(key)
         if key not in hash_table:
             hash_table[key] = (1, value)
         else:
             hash_table[key] = (hash_table[key][0] + 1, value)
-        self.l.release()
         self.save_json(self.hash_table, hash_table)
 
     def exposed_get_key(self, key):
         c = self.chord_node()
-        print('casi find successor')
         h = c.find_successor(uhash(key))
-        print('get key')
         c = rpyc.connect(h.ip, port=h.port + 1)
         has = c.root.hash_table()
         key = str(key)

@@ -15,6 +15,9 @@ import time
 SIZE = 160
 NODE_AMOUNT = 1 << SIZE
 
+FLAG_R = 1
+FLAG_W = 2
+FLAG_D = 3
 
 def create_dht(ip, port):
     host = address.NodeKey(ip, port)
@@ -70,39 +73,37 @@ class lock_dhtService( DHTService, rpyc.Service):
         keys = json.loads(keys)
         hash_table = self.open_json(self.hash_table)
         for i in keys:
-            self.l.acquire()
             if i not in hash_table:
                 hash_table[i] = keys[i]
-            self.l.release()
         self.save_json(self.hash_table, keys)
 
     def exposed_backup(self, data):
         replicate = self.open_json(self.replicate)
         for i in data:
-            self.l.acquire()
             if i not in replicate:
                 replicate[i] = data[i]
-            self.l.release()
         self.save_json(self.replicate, replicate)
 
-    def exposed_get_key(self, key):
+    def exposed_lock(self, key, flag):
         c = self.chord_node()
         h = c.find_successor(uhash(key))
         c = rpyc.connect(h.ip, port=h.port + 1)
         has = c.root.hash_table()
         key = str(key)
-        if key in has:
-            return None
-        key = c.root.set_key(key)
+        if not key in has:
+            c.root.set(key, flag)
+            c.close()
+            return True
+        k = has[key]
         c.close()
-        return key
+        if FLAG_R == flag == k:
+            return True
+        return False
 
     def exposed_set(self, key, value):
         hash_table = self.open_json(self.hash_table)
-        self.l.acquire()
         key = str(key)
         hash_table[key] = value
-        self.l.release()
         self.save_json(self.hash_table, hash_table)
         
 
@@ -119,11 +120,11 @@ class lock_dhtService( DHTService, rpyc.Service):
         c.close()
         return k
 
-    def exposed_remove_key(self, lock, key):
+    def exposed_remove_lock(self, key, flag):
         c = self.chord_node()
         h = c.find_successor(uhash(key))
         c = rpyc.connect(h.ip, port=h.port + 1)
-        if c.root.check_lock(lock, key):
+        if c.root.check_lock(flag, key):
             c.root.del_key(key)
         c.close()
 

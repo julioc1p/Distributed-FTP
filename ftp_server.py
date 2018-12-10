@@ -7,7 +7,7 @@ import os, sys
 import time
 
 HOST = '0.0.0.0'
-PORT = 23230
+PORT = 21#23230
 # CWD = os.getenv('HOME')
 CWD = os.path.sep
 
@@ -58,7 +58,7 @@ class FTPServer(Thread):
         self.cmd_sock.send(cmd.encode())
 
     def sendData(self, data):
-        self.dataSock.send(data.encode())
+        self.dataSock.send(data)
 
 
     def startDataSock(self):
@@ -162,13 +162,13 @@ class FTPServer(Thread):
             self.startDataSock()
             if not self.file_system.isdir(pathname):
                 fileMessage = self.file_system.fileProperty(pathname)
-                self.sendData(fileMessage+'\r\n')
+                self.sendData(fileMessage+b'\r\n')
 
             else:
                 fileMessage = self.file_system.list(pathname)
                 # for file in self.file_system.list(pathname):
                 #     fileMessage += self.file_system.fileProperty(os.path.join(pathname, file)) + '\n'
-                self.sendData(fileMessage +'\r\n')
+                self.sendData(fileMessage +b'\r\n')
             self.stopDataSock( )
             self.sendCommand('226 List done.\r\n')
 
@@ -192,13 +192,13 @@ class FTPServer(Thread):
             self.startDataSock()
             if not self.file_system.isdir(pathname):
                 fileMessage = self.file_system.fileProperty(pathname)
-                self.sendData(fileMessage+'\r\n')
+                self.sendData(fileMessage+b'\r\n')
 
             else:
                 fileMessage = self.file_system.nlist(pathname)
                 # for file in self.file_system.list(pathname):
                 #     fileMessage += self.file_system.fileProperty(os.path.join(pathname, file)) + '\n'
-                self.sendData(fileMessage +'\r\n')
+                self.sendData(fileMessage +b'\r\n')
             self.stopDataSock( )
             self.sendCommand('226 List done.\r\n')
 
@@ -277,7 +277,9 @@ class FTPServer(Thread):
             self.sendCommand('550 DELE failed File {} not exist.\r\n'.format(pathname))
 
         else:
-            self.file_system.remove(pathname)
+            if not self.file_system.remove(pathname):
+                self.sendCommand('450 RETR failed File {} bloqued.\r\n'.format(pathname))
+                return
             self.sendCommand('250 File deleted.\r\n')
 
     def RETR(self, filename):
@@ -286,15 +288,17 @@ class FTPServer(Thread):
         if not self.file_system.exist(pathname):
             self.sendCommand('550 RETR failed File {} not exist.\r\n'.format(pathname))
             return
-        mode = 'a'
+        mode = 'r'
         if self.mode == 'I':
-            mode = 'b'
+            mode += '+b'
+        if not self.file_system.open(pathname, mode):
+            self.sendCommand('450 RETR failed File {} bloqued.\r\n'.format(pathname))
+            return
         self.sendCommand('150 Opening data connection.\r\n')
         self.startDataSock( )
-        while True:
-            data = self.file_system.read_file(pathname)
+        for data in self.file_system.read():
             if not data: break
-            self.sendData(data.decode())
+            self.sendData(data)
         self.stopDataSock( )
         self.sendCommand('226 Transfer complete.\r\n')
 
@@ -307,8 +311,6 @@ class FTPServer(Thread):
         pathname = os.path.abspath(os.path.join(self.cwd, filename))
         log('STOR', pathname)
         
-        self.sendCommand('150 Opening data connection.\r\n' )
-        self.startDataSock( )
         # self.file_system.remove(pathname)\
         mode = 'w'
         if self.mode == 'I':
@@ -316,6 +318,8 @@ class FTPServer(Thread):
         if not self.file_system.open(pathname, mode):
             self.sendCommand('450 STOR failed File {} bloqued.\r\n'.format(pathname))
             return
+        self.sendCommand('150 Opening data connection.\r\n' )
+        self.startDataSock( )
         # print('file openado')
         while True:
             data = self.dataSock.recv(1024)

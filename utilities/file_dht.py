@@ -55,39 +55,17 @@ class file_dhtService(DHTService, rpyc.Service):
     def __init__(self, name, host, PATH):
         DHTService.__init__(self, name, host, PATH)
 
-    def get_lock(self):
-        return '192.168.1.108', 23241
-
-    def exposed_set_key(self, lock, key, value):
-        lock_dht = self.get_lock()
-        print('2.1')
-        c = rpyc.connect(lock_dht[0], lock_dht[1])
-        if not c.root.check_lock(lock, '.'.join(key.split('.')[:-1])):
-            return None
-        c.close()
+    def exposed_set_key(self, key, value):
         c = self.chord_node()
         h = c.find_successor(uhash(key))
         c = rpyc.connect(h.ip, port=h.port + 1)
-        print(key, value)
         c.root.set(key, value)
         c.close()
 
-    def exposed_remove_key(self, lock, key):
-        lock = self.get_lock()
-        lock = rpyc.connect(lock[0], lock[1])
-        l = lock.root.get_key('.'.join(key.split('.')[:-1]))
-        lock.close()
-        print(l, lock)
-        if l is None or l != lock:
-            return None
-        c = self.chord_node()
-        print('casi find successor')
-        h = c.find_successor(uhash(key))
-        print('get key')
-        c = rpyc.connect(h.ip, port=h.port + 1)
-        has = c.root.hash_table()
-        key = str(key)
-        if key not in has:
-            return None
-        r = tuple(has[key])
-        c.close()
+    # def exposed_remove_key(self, key):
+    #     c = self.chord_node()
+    #     h = c.find_successor(uhash(key))
+    #     c = rpyc.connect(h.ip, port=h.port + 1)
+    #     has = c.root.del_key(key)
+    #     c.close()
+    #     return has
