@@ -11,9 +11,8 @@ import pathlib
 import os
 from chord import Node
 import time
+from config import *
 
-SIZE = 160
-NODE_AMOUNT = 1 << SIZE
 
 
 def create_dht(ip, port):
@@ -28,9 +27,6 @@ def create_chord(name, host, follower):
     print(name, '\t\t', host, '\t\t', follower)
     node = Node(name, host, follower)
     node.start()
-    # while 1:
-    #     time.sleep(5)
-    #     node.hey()
 
 
 def start_file_service(ip, port, follower_ip=None, follower_port=None):

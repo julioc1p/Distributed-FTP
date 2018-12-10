@@ -9,6 +9,7 @@ import time
 import os
 import stat
 from file_system.misc import uhash
+from config import *
 
 
 log = logging.getLogger('coordinator')
@@ -86,9 +87,7 @@ def fileProperty(filepath):
 
 
 class Coordinator:
-    minions_cache = [('localhost', 23251), ('localhost', 23253), ('localhost', 23255)]
-    dht_cache = [('localhost', 23235),('localhost', 23237),('localhost', 23239)]
-    locks = []
+    
     block_size = 5
     rep_factor = 3
 
@@ -105,17 +104,20 @@ class Coordinator:
             pass
 
     def get_minions(self):
-        return self.minions_cache[0]
-
-    def get_lock(self):
-        return 'localhost', 23241
-
-    def get_name(self):
-        for i in self.dht_cache:
+        for i in minions_cache:
             if ping(i[0], i[1]):
                 return i
-        return 'localhost', 23235
 
+    def get_lock(self):
+        for i in lock_cache:
+            if ping(i[0], i[1]):
+                return i
+
+    def get_name(self):
+        for i in dht_cache:
+            if ping(i[0], i[1]):
+                return i
+                
     def nlist(self,file):
         if file == os.path.sep:
             file = ''

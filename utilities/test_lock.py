@@ -36,9 +36,9 @@ def get_backup(port):
     con.close()
 
 
-p1 = Thread(target=create_dht_chord, args=('192.168.1.108', 23240))
-p2 = Thread(target=create_dht_chord, args=('192.168.1.108', 23242, '192.168.1.108', 23240))
-p3 = Thread(target=create_dht_chord, args=('192.168.1.108', 23244, '192.168.1.108', 23240))
+p1 = Thread(target=create_dht_chord, args=('192.168.1.132', 23240))
+p2 = Thread(target=create_dht_chord, args=('192.168.1.132', 23242, '192.168.1.132', 23240))
+p3 = Thread(target=create_dht_chord, args=('192.168.1.132', 23244, '192.168.1.132', 23240))
 
 p1.start()
 time.sleep(5)

@@ -5,10 +5,7 @@ from threading import Thread, Lock
 import sys, pathlib, os
 from chord import Node
 import time
-
-SIZE = 160
-NODE_AMOUNT = 1 << SIZE
-
+from config import *
 
 def recv_MC(name):
     i = 10
@@ -34,9 +31,6 @@ def create_chord(name, host,follower):
     print(name, '\t\t', host, '\t\t', follower)
     node = Node(name, host, follower)
     node.start()
-    # while 1:
-    #     time.sleep(5)
-    #     node.hey()
 
 def start_name_service(ip, port, follower_ip=None, follower_port=None):
 
@@ -48,9 +42,6 @@ def start_name_service(ip, port, follower_ip=None, follower_port=None):
         follower = None
     else:
         follower = address.NodeKey(follower_ip, follower_port)
-    # follower = recv_MC('name')
-    # if not follower is None:
-    #     follower = address.NodeKey(follower['ip'], follower['port'])
     tc = Thread(target=create_chord, args=('name_chord', host, follower))
     tc.start()
 
@@ -81,7 +72,7 @@ class DHTService(rpyc.Service):
         self.launch_json()
         Thread(target=self.send_MC).start()
 
-    @repeat_and_sleep(5)
+    @repeat_and_sleep(TIME_SEND_MC)
     def send_MC(self):
         data = {'name': f'{self.name}_dht',
                 'ip': self.chord_node.ip,

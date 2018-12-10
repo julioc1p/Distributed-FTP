@@ -5,9 +5,10 @@ from file_system.coordinator import Coordinator
 import socket
 import os, sys
 import time
+from file_system.config import *
 
 HOST = '0.0.0.0'
-PORT = 21#23230
+PORT = 23230
 # CWD = os.getenv('HOME')
 CWD = os.path.sep
 

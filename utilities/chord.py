@@ -7,10 +7,7 @@ import rpyc
 import sys
 import json
 from misc import uhash, send_multicast, recv_multicast
-
-SIZE = 160
-NODESIZE = 1 << SIZE
-SUCCSSIZE = 3
+from config import *
 
 
 def repeat_and_sleep(sleep_time):
@@ -104,9 +101,6 @@ class Node(object):
         # Deamon(self,  'discover').start()
         # Deamon(self, 'clear_replicate').start()
 
-    def get_remote_node(self, address):
-        return Pyro4.Proxy(f'PYRO:{address.id}@{address.ip}:{address.port}')
-
     def start_local_server(self):
         Pyro4.Daemon.serveSimple({self: str(self.__hash__())}, host=self.address_.ip, port=self.address_.port, ns=False)
 
@@ -142,7 +136,6 @@ class Node(object):
         return self.address_
 
     def find_successor(self, id):
-
         predec = self.predeccessor()
         if predec and self.inrange(id, self.modulate(predec.id, 1), self.id(1)):
             return self.address_
@@ -165,25 +158,24 @@ class Node(object):
         return addr
 
     def closest_preceding_finger(self, id):
-
         for addr in reversed(self.finger_):
             if self.ping(addr) and self.inrange(addr.id, self.id(1), id):
                 return addr
         return self.address_
 
     def verify_keys(self):
-        dht = rpyc.connect(self.address_.ip, self.address_.port+1)
         try:
+            dht = rpyc.connect(self.address_.ip, self.address_.port+1)
             if self.id() == self.predeccessor().id:
                 dht.root.verify_interval(self.id(1), self.id())
             else :
                 dht.root.verify_interval(self.modulate(self.predeccessor().id, 1), self.id())
+            dht.close()
         except:
             pass
-        dht.close()
 
     #pensar en dejar solo discover
-    @repeat_and_sleep(1)
+    @repeat_and_sleep(TIME_STB)
     # @retry(3)
     def stabilize(self):
         succ = self.successor()
@@ -199,13 +191,13 @@ class Node(object):
             self.predeccessor_ = other_node
             self.verify_keys()
 
-    @repeat_and_sleep(1)
+    @repeat_and_sleep(TIME_FIX)
     def fix_fingers(self):
         index = random.randint(0, SIZE - 1)
         self.finger_[index] = self.find_successor(self.id(1 << index))
         return True
 
-    @repeat_and_sleep(1)
+    @repeat_and_sleep(TIME_UPDS)
     def update_successors(self):
         succ = self.successor()
         if succ.id == self.id():
@@ -215,30 +207,36 @@ class Node(object):
     def successors(self):
         return self.successors_[:SUCCSSIZE - 1]
 
-    @repeat_and_sleep(1)
+    @repeat_and_sleep(TIME_REPL)
     def replicate(self):
         dht_addrs = []
         for node in self.successors_:
             if self.ping(node):
                 dht_addrs.append(node)
         if len(dht_addrs):
-            dht = rpyc.connect(self.address_.ip, self.address_.port+1)
-            dht.root.start_backup(dht_addrs)
-            dht.close()
+            try:
+                dht = rpyc.connect(self.address_.ip, self.address_.port+1)
+                dht.root.start_backup(dht_addrs)
+                dht.close()
+            except:
+                pass
 
     @repeat_and_sleep(30)
     def clear_replicate(self):
-        dht = rpyc.connect(self.address_.ip, self.address_.port+1)
-        dht.root.clear()
-        dht.close()
+        try:   
+            dht = rpyc.connect(self.address_.ip, self.address_.port+1)
+            dht.root.clear()
+            dht.close()
+        except:
+            pass
 
-    @repeat_and_sleep(1)
+    @repeat_and_sleep(TIME_INF)
     def inform(self):
         data = json.dumps({'name':self.type, 'ip':self.address_.ip, 'port':self.address_.port
         , 'id':self.address_.id})
         send_multicast(data)
 
-    @repeat_and_sleep(1)
+    @repeat_and_sleep(TIME_DISC)
     def discover(self):
         try:
             data = json.loads(recv_multicast())
@@ -275,6 +273,6 @@ if __name__ == '__main__':
     if len(sys.argv) == 5 :
         node = Node(add, NodeKey(sys.argv[3], int(sys.argv[4])))
     else :
-        node = Node(add)
+        node = Node('', add)
     node.start()
 
