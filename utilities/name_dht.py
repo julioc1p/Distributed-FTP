@@ -70,7 +70,7 @@ class DHTService(rpyc.Service):
         self.path = PATH
         self.hash_table = {}
         self.replicate = {}
-        self.launch_json()
+        # self.launch_json()
         # Thread(target=self.send_MC).start()
 
     # @repeat_and_sleep(TIME_SEND_MC)
