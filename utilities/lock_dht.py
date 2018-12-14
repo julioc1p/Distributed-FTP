@@ -67,75 +67,37 @@ class lock_dhtService( DHTService, rpyc.Service):
         DHTService.__init__(self, name, host, PATH)
         # Thread(target=self.clear).start()
 
-    def exposed_get_keys_from(self, address, min, max):
-        connection = rpyc.connect(address.ip, port=address.port+1)
-        keys = connection.root.give_key_from(min, max)
-        keys = json.loads(keys)
-        hash_table = self.open_json(self.hash_table)
-        for i in keys:
-            if i not in hash_table:
-                hash_table[i] = keys[i]
-        self.save_json(self.hash_table, keys)
-
-    def exposed_backup(self, data):
-        replicate = self.open_json(self.replicate)
-        for i in data:
-            if i not in replicate:
-                replicate[i] = data[i]
-        self.save_json(self.replicate, replicate)
-
     def exposed_lock(self, key, flag):
         c = self.chord_node()
         h = c.find_successor(uhash(key))
         c = rpyc.connect(h.ip, port=h.port + 1)
-        has = c.root.hash_table()
+        value = c.root.get(key)
         key = str(key)
-        if not key in has:
+        if not value:
             c.root.set(key, flag)
             c.close()
             return True
-        k = has[key]
         c.close()
-        if FLAG_R == flag == k:
+        if FLAG_R == flag == value:
             return True
         return False
-
-    def exposed_set(self, key, value):
-        hash_table = self.open_json(self.hash_table)
-        key = str(key)
-        hash_table[key] = value
-        self.save_json(self.hash_table, hash_table)
-        
-
-    def exposed_set_key(self, key, lock=None):
-        host = self.chord_node()
-        c = self.chord_node()
-        h = c.find_successor(uhash(key))
-        c = rpyc.connect(h.ip, port=h.port + 1)
-        if not lock is None:
-            k = lock
-        else:
-            k = randint(1, 1e100)
-        c.root.set(key, k)
-        c.close()
-        return k
 
     def exposed_remove_lock(self, key, flag):
         c = self.chord_node()
         h = c.find_successor(uhash(key))
         c = rpyc.connect(h.ip, port=h.port + 1)
         if c.root.check_lock(flag, key):
-            c.root.del_key(key)
+            c.root.remove(key)
         c.close()
 
     def exposed_check_lock(self, lock, key):
         c = self.chord_node()
         h = c.find_successor(uhash(key))
         c = rpyc.connect(h.ip, port=h.port + 1)
-        h = c.root.hash_table()
-        h = h[key]
+        h = c.root.get(key)
         return h == lock
 
+    #consultar
     @repeat_and_sleep(5)
     def clear(self):
         self.save_json(self.hash_table,{})
