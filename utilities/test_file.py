@@ -36,18 +36,13 @@ def get_backup(port):
     con.close()
 
 
-p1 = Thread(target=create_dht_chord, args=('192.168.1.132', 23250))
-p2 = Thread(target=create_dht_chord, args=('192.168.1.132', 23252, '192.168.1.132', 23250))
-p3 = Thread(target=create_dht_chord, args=('192.168.1.132', 23254, '192.168.1.132', 23250))
+p1 = Thread(target=create_dht_chord, args=('localhost', 23250))
+p2 = Thread(target=create_dht_chord, args=('localhost', 23252, 'localhost', 23250))
+p3 = Thread(target=create_dht_chord, args=('localhost', 23254, 'localhost', 23250))
 
 p1.start()
 time.sleep(5)
 
-
-# get_key(6, 23235)
-# get_key(10, 23235)
-# get_key(11, 23235)
-# get_key(13, 23235)
 
 p2.start()
 time.sleep(5)
