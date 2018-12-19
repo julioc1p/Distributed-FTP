@@ -157,10 +157,10 @@ class Coordinator:
             host = host[0], int(host[1])
             hosts[block_id] = host
         for i in hosts:
-            lock_dht = self.get_lock()
-            connect_lock = rpyc.connect(lock_dht[0], lock_dht[1])
-            connect_lock.root.lock(self.filename, 1)
-            connect_lock.close()
+            # lock_dht = self.get_lock()
+            # connect_lock = rpyc.connect(lock_dht[0], lock_dht[1])
+            # connect_lock.root.lock(self.filename, 1)
+            # connect_lock.close()
             host = hosts[i]
             if not ping(host[0], host[1]):
                 host = self.get_minions()
@@ -169,11 +169,11 @@ class Coordinator:
             data = connect_file.root.get_key(f'{self.filename}.part{i}')[1]
             connect_file.close()
             if data:
-                if self.mode[-1] == 'b':
-                    t = data.encode()
-                    yield t
-                else:
-                    yield data
+                # if self.mode[-1] == 'b':
+                #     t = data.encode()
+                #     yield t
+                # else:
+                yield data
             else:
                 return None
         
@@ -246,32 +246,40 @@ class Coordinator:
             self.filename = None
             self.package_count = 1
             return 
-            
-        if self.mode[-1] == 'b':
-            data = data.decode()
-        lock_dht = self.get_lock()
-        c = rpyc.connect(lock_dht[0], lock_dht[1])
-        c.root.lock(self.filename, 2)
-        c.close()
-        if data is bytes: 
-            t = data.decode()
-        else:
-            t = data
+        #hechar un vistaso 
+        # if self.mode[-1] == 'b':
+        #     data = data.decode()
+
+        # lock_dht = self.get_lock()
+        # c = rpyc.connect(lock_dht[0], lock_dht[1])
+        # c.root.lock(self.filename, 2)
+        # c.close()
+
+        # if data is bytes: 
+        #     t = data
+        # else:
+        #     t = data.decode()
+        
         file_dht = self.get_minions()
         c = rpyc.connect(file_dht[0], file_dht[1])
-        c.root.set_key(self.filename + '.part' + str(self.package_count), t)
+        # print('coordinator before')
+        c.root.set_key(self.filename + '.part' + str(self.package_count), data)
+        # print('coordinator after')
+        c.close()
 
-        c.close()
-        lock_dht = self.get_lock()
-        c = rpyc.connect(lock_dht[0], lock_dht[1])
-        c.root.lock(self.filename, 2)
-        c.close()
-        f = open(f'/tmp/dftp/{o_name}', 'a'+self.mode[1:])
-        if self.mode[-1] == 'b':
-            f.write(data.encode())
-        else:
-            f.write(data)
+        # lock_dht = self.get_lock()
+        # c = rpyc.connect(lock_dht[0], lock_dht[1])
+        # c.root.lock(self.filename, 2)
+        # c.close()
+
+        # print(self.mode)
+        f = open(f'/tmp/dftp/{o_name}', 'a+b')#+self.mode[1:])
+        # if self.mode[-1] == 'b':
+        #     f.write(data.encode())
+        # else:
+        f.write(data)
         f.close()
+
         dht = self.get_name()
         c = rpyc.connect(dht[0], dht[1])
         t = c.root.get_key(self.filename)
