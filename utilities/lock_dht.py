@@ -30,9 +30,6 @@ def create_chord(name, host, follower):
     print(name, '\t\t', host, '\t\t', follower)
     node = Node(name, host, follower)
     node.start()
-    # while 1:
-    #     time.sleep(5)
-    #     node.hey()
 
 
 def start_lock_service(ip, port, follower_ip=None, follower_port=None):
@@ -45,9 +42,6 @@ def start_lock_service(ip, port, follower_ip=None, follower_port=None):
         follower = None
     else:
         follower = address.NodeKey(follower_ip, follower_port)
-    # follower = recv_MC('name')
-    # if not follower is None:
-    #     follower = address.NodeKey(follower['ip'], follower['port'])
     tc = Thread(target=create_chord, args=('lock_chord', host, follower))
     tc.start()
 
@@ -64,7 +58,6 @@ def repeat_and_sleep(t):
 class lock_dhtService( DHTService, rpyc.Service):
     def __init__(self, name, host, PATH):
         DHTService.__init__(self, name, host, PATH)
-        # Thread(target=self.clear).start()
         Deamon(self, 'clear').start()
 
     def exposed_lock(self, key, flag):
@@ -91,7 +84,12 @@ class lock_dhtService( DHTService, rpyc.Service):
             print('lock removido')
         c.close()
 
-    #consultar
     @repeat_and_sleep(5)
     def clear(self):
         self.hash_table = {}
+
+if __name__ == "__main__":
+    if len(sys.argv) > 3:
+        start_lock_service(sys.argv[1], int(sys.argv[2]), sys.argv[3], int(sys.argv[4]))
+    else:
+        start_lock_service(sys.argv[1], int(sys.argv[2]))

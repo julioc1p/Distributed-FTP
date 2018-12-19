@@ -221,10 +221,6 @@ class Coordinator:
             data = connect_file.root.get_key(f'{self.filename}.part{i}')[1]
             connect_file.close()
             if data:
-                # if self.mode[-1] == 'b':
-                #     t = data.encode()
-                #     yield t
-                # else:
                 yield data
             else:
                 return None
@@ -289,46 +285,20 @@ class Coordinator:
             c.root.set_key(o_dir, k)
             os.remove(f'/tmp/dftp/{o_name}')
             c.close()
-
-            # lock = self.get_lock()
-            # c = rpyc.connect(lock[0], lock[1])
-            # c.root.remove_lock(self.filename, 2)
-            # c.close()
-
             self.filename = None
             self.package_count = 1
             return 
-        #hechar un vistaso 
-        # if self.mode[-1] == 'b':
-        #     data = data.decode()
 
         # lock_dht = self.get_lock()
         # c = rpyc.connect(lock_dht[0], lock_dht[1])
         # c.root.lock(self.filename, 2)
         # c.close()
-
-        # if data is bytes: 
-        #     t = data
-        # else:
-        #     t = data.decode()
         
         file_dht = self.get_minions()
         c = rpyc.connect(file_dht[0], file_dht[1])
-        # print('coordinator before')
         c.root.set_key(self.filename + '.part' + str(self.package_count), data)
-        # print('coordinator after')
         c.close()
-
-        # lock_dht = self.get_lock()
-        # c = rpyc.connect(lock_dht[0], lock_dht[1])
-        # c.root.lock(self.filename, 2)
-        # c.close()
-
-        # print(self.mode)
-        f = open(f'/tmp/dftp/{o_name}', 'a+b')#+self.mode[1:])
-        # if self.mode[-1] == 'b':
-        #     f.write(data.encode())
-        # else:
+        f = open(f'/tmp/dftp/{o_name}', 'a+b')
         f.write(data)
         f.close()
 
@@ -353,64 +323,6 @@ class Coordinator:
         if c.root.get_key(key):
             return True
         return False
-
-    # def calculate_count(self, size):
-    #     r = int(math.ceil(float(size)/self.block_size))
-    #     log.debug('file will split in %d block', r)
-    #     return r
-
-    def rename(self, oldname, newname):
-        lock_dht = self.get_lock()
-        c = rpyc.connect(lock_dht[0], lock_dht[1])
-        #frase: 'dejame ese a mi !!!!, jj'
-        l = c.root.get_key(oldname)
-        c.close()
-        if not l is None:
-            return False
-        lock_dht = self.get_lock()
-        c = rpyc.connect(lock_dht[0], lock_dht[1])
-        l = c.root.set_key(oldname)
-        c.close()
-        dht = self.get_name()
-        c = rpyc.connect(dht[0], dht[1])
-        keys = c.root.remove_key(oldname)
-        c.root.set_key(newname, key)
-        c.close()
-        hosts = {}
-        for part in keys.split(';'):
-            block_id, block_location = part.split(':')
-            host = block_location.split(',')
-            host = host[0], int(host[1])
-            hosts[block_id] = host
-        self.mode = 'w'
-        for i in hosts:
-            self.filename = oldname
-            data = self.read()
-            self.filename = newname
-            self.write(data)
-        self.filename = oldname
-        data = self.read()
-        self.filename = newname
-        self.write(data)
-        self.filename = None
-        self.package_count = 1
-        d_name = os.path.dirname(newname)
-        b_name = os.path.basename(newname)
-        c = rpyc.connect(dht[0], dht[1])
-        info = c.root.get_key(d_name).split('\n')
-        c.close()
-        i = 0
-        while i < len(info):
-            info[i] = info[i].split(' ')
-            c_name = ' '.join(info[i][8:])
-            if c_name == b_name:
-                info[i] = info[i][:8] + b_name.split(' ')
-            info[i] = ' '.join(info[i])
-        info = '\n'.join(info)
-        c = rpyc.connect(dht[0],dht[1])
-        c.root.set_key(d_name, info)
-        c.close()
-        
 
     def rmdir(self, path):
         f = self.nlist(path)
@@ -523,7 +435,6 @@ class Coordinator:
         connection_lock = rpyc.connect(lock[0], lock[1])
         lock = connection_lock.root.lock(filename, flag)
         connection_lock.close()
-        # if self.lock is None and (mode[0] == 'w' or mode[0] == 'a'):
         if not lock:  
             return False        
         o_name = os.path.basename(filename)

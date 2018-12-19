@@ -75,62 +75,9 @@ class DHTService(rpyc.Service):
         self.hash_table = {}
         self.replicate = {}
         Deamon(self, 'clear_backup').start()
-        # self.launch_json()
-        # Thread(target=self.send_MC).start()
-
-    # @repeat_and_sleep(TIME_SEND_MC)
-    # def send_MC(self):
-    #     data = {'name': f'{self.name}_dht',
-    #             'ip': self.chord_node.ip,
-    #             'port': str(self.chord_node.port + 1)
-    #             }
-    #     send_multicast(json.dumps(data))
-
-    def launch_json(self):
-        try:
-            os.mkdir(f'{pathlib.Path.home()}/.dftp/')
-        except:
-            pass
-        try:
-            os.mkdir(self.path)
-        except:
-            pass
-        try:
-            f = open(self.hash_table, 'r')
-            f.close()
-        except:
-            f = open(self.hash_table, 'w')
-            json.dump({}, f)
-            f.close()
-        try:
-            f = open(self.replicate, 'r')
-            f.close()
-        except:
-            f = open(self.replicate, 'w')
-            json.dump({}, f)
-            f.close()
-
-    def open_json(self, dir):
-        self.launch_json()
-        self.l.acquire()
-        f = open(dir, 'r')
-        aux = json.load(f)
-        f.close()
-        self.l.release()
-        return aux
-
-    def save_json(self, dir, data):
-        self.launch_json()
-        self.l.acquire()
-        f = open(dir, 'w')
-        json.dump(data, f)
-        self.l.release()
-        f.close()
 
     def exposed_verify_interval(self, min, max):
         aux = {}
-        # hash_table = self.open_json(self.hash_table)
-        # replicate = self.open_json(self.replicate)
         for i in self.hash_table:
             if self.inrange(uhash(i), min, max + 1):
                 aux[i] = self.hash_table[i]
@@ -141,8 +88,6 @@ class DHTService(rpyc.Service):
         for i in self.hash_table:
             if i in self.replicate:
                 self.replicate.pop(i)
-        # self.save_json(self.hash_table, aux)
-        # self.save_json(self.replicate, replicate)
 
     @repeat_and_sleep(600)
     def clear_backup(self):
@@ -150,32 +95,25 @@ class DHTService(rpyc.Service):
 
     def exposed_give_key_from(self, min, max):
         aux = {}
-        # hash_table = self.open_json(self.hash_table)
         for i in self.hash_table:
             if self.inrange(uhash(i), min, max + 1):
                 aux[i] = self.hash_table[i]
         for i in aux:
             self.hash_table.pop(i)
-        # r = json.dumps(aux)
         return pickle.dumps(aux)
 
     def exposed_get_keys_from(self, address, min, max):
         connection = rpyc.connect(address.ip, port=address.port+1)
         keys = connection.root.give_key_from(min, max)
         keys = pickle.loads(keys)
-        # hash_table = self.open_json(self.hash_table)
-        #preguntar a juan jose
         for i in keys:
             if i not in self.hash_table or self.hash_table[i][0] < int(keys[i][0]):
                 self.hash_table[i] = keys[i]
-        # self.save_json(self.hash_table, keys
 
     def exposed_backup(self, addr, data):
-        # replicate = self.open_json(self.replicate)
         for i in data:
             if i not in self.replicate or self.replicate[i][0] < int(data[i][0]):
                 self.replicate[i] = data[i]
-        # self.save_json(self.replicate, replicate)
 
     def exposed_start_backup(self, dhts):
         addr = (self.chord_node.ip, self.chord_node.port+1)
@@ -183,7 +121,6 @@ class DHTService(rpyc.Service):
             if i.ip == self.chord_node.ip and i.port + 1 == self.chord_node.port + 1:
                 return
             c = rpyc.connect(i.ip, i.port+1)
-            # hash_table = self.open_json(self.hash_table)
             t = self.hash_table.copy()
             c.root.backup(addr, t)
             c.close()
@@ -199,13 +136,11 @@ class DHTService(rpyc.Service):
         return self.hash_table[key]
 
     def exposed_set(self, key, value):
-        # hash_table = self.open_json(self.hash_table)
         key = str(key)
         if key not in self.hash_table:
             self.hash_table[key] = (1, value)
         else:
             self.hash_table[key] = (self.hash_table[key][0] + 1, value)
-        # self.save_json(self.hash_table, hash_table)
 
     def exposed_get_key(self, key):
         c = self.chord_node()
@@ -223,11 +158,9 @@ class DHTService(rpyc.Service):
         c.close()
 
     def exposed_remove(self, key):
-        # h = self.open_json(self.hash_table)
         if key not in self.hash_table:
             return None
         r = self.hash_table.pop(key)
-        # self.save_json(self.hash_table,h)
         return r
 
     def exposed_remove_key(self, key):
@@ -252,4 +185,7 @@ class DHTService(rpyc.Service):
 
 
 if __name__ == '__main__':
-    start_dht_service(sys.argv[1], int(sys.argv[2]))
+    if len(sys.argv) > 3:
+        start_name_service(sys.argv[1], int(sys.argv[2]), sys.argv[3], int(sys.argv[4]))
+    else:
+        start_name_service(sys.argv[1], int(sys.argv[2]))

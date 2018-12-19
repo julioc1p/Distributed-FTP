@@ -103,7 +103,6 @@ class Node(object):
         Deamon(self, 'update_successors').start()
         Deamon(self, 'replicate').start()
         Deamon(self,  'discover').start()
-        # Deamon(self, 'clear_replicate').start()
 
     def start_local_server(self):
         Pyro4.Daemon.serveSimple({self: str(self.__hash__())}, host=self.address_.ip, port=self.address_.port, ns=False)
@@ -125,7 +124,6 @@ class Node(object):
             dht.close()
         else:
             self.finger_[0] = self.address_
-        # self.successors_ = [self.finger_[0]]
 
     def predeccessor(self):
         if not self.ping(self.predeccessor_):
@@ -183,7 +181,6 @@ class Node(object):
 
     #pensar en dejar solo discover
     @repeat_and_sleep(TIME_STB)
-    # @retry(3)
     def stabilize(self):
         succ = self.successor()
         x = succ().predeccessor()

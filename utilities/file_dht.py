@@ -39,9 +39,6 @@ def start_file_service(ip, port, follower_ip=None, follower_port=None):
         follower = None
     else:
         follower = address.NodeKey(follower_ip, follower_port)
-    # follower = recv_MC('name')
-    # if not follower is None:
-    #     follower = address.NodeKey(follower['ip'], follower['port'])
     tc = Thread(target=create_chord, args=('file_chord', host, follower))
     tc.start()
 
@@ -129,8 +126,6 @@ class file_dhtService(DHTService, rpyc.Service):
 
     def exposed_verify_interval(self, min, max):
         aux = {}
-        # hash_table = self.open_json(self.hash_table)
-        # replicate = self.open_json(self.replicate)
         for i in self.hash_table:
             if not self.inrange(uhash(i), min, max + 1):
                 aux[i] = self.hash_table[i]
@@ -143,12 +138,9 @@ class file_dhtService(DHTService, rpyc.Service):
         for i in self.hash_table:
             if i in self.replicate:
                 self.replicate.pop(i)
-        # self.save_json(self.hash_table, aux)
-        # self.save_json(self.replicate, replicate)
 
     def exposed_give_key_from(self, min, max):
         aux = {}
-        # hash_table = self.open_json(self.hash_table)
         for i in self.hash_table:
             if self.inrange(uhash(i), min, max + 1):
                 aux[i] = self.hash_table[i]
@@ -158,22 +150,14 @@ class file_dhtService(DHTService, rpyc.Service):
         for i in aux:
             self.delete_data(i)
             self.hash_table.pop(i)
-        # r = json.dumps(aux)
-        # return pickle.dumps(aux)
 
     def exposed_get_keys_from(self, address, min, max):
         connection = rpyc.connect(address.ip, port=address.port+1)
-        # keys = connection.root.give_key_from(min, max)
-        # keys = pickle.loads(keys)
-        # hash_table = self.open_json(self.hash_table)
-        #preguntar a juan jose
-        for item in connection.root.give_key_from(min, max):
             i = item[0]
             if i not in self.hash_table or self.hash_table[i][0] < int(item[1]):
                 data = connection.root.get_data(i)
                 self.hash_table[i] = (item[1], i)
                 self.set_data(i, data)
-        # self.save_json(self.hash_table, keys
 
     def exposed_backup(self, addr, data):
         c = rpyc.connect(addr[0], addr[1])
@@ -191,14 +175,12 @@ class file_dhtService(DHTService, rpyc.Service):
         return (self.hash_table[key][0], self.get_data(key))
 
     def exposed_set(self, key, value):
-        # hash_table = self.open_json(self.hash_table)
         key = str(key)
         if key not in self.hash_table:
             self.hash_table[key] = (1, key)
         else:
             self.hash_table[key] = (self.hash_table[key][0] + 1, key)
         self.set_data(key, value)
-        # self.save_json(self.hash_table, hash_table)
 
     def exposed_remove(self, key):
         if key not in self.hash_table:
@@ -207,3 +189,9 @@ class file_dhtService(DHTService, rpyc.Service):
         self.delete_data(key)
         r = self.hash_table[key]
         return (r[0], data)
+
+if __name__ == "__main__":
+    if len(sys.argv) > 3:
+        start_file_service(sys.argv[1], int(sys.argv[2]), sys.argv[3], int(sys.argv[4]))
+    else:
+        start_file_service(sys.argv[1], int(sys.argv[2]))
