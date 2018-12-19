@@ -157,10 +157,10 @@ class Coordinator:
             host = host[0], int(host[1])
             hosts[block_id] = host
         for i in hosts:
-            # lock_dht = self.get_lock()
-            # connect_lock = rpyc.connect(lock_dht[0], lock_dht[1])
-            # connect_lock.root.lock(self.filename, 1)
-            # connect_lock.close()
+            lock_dht = self.get_lock()
+            connect_lock = rpyc.connect(lock_dht[0], lock_dht[1])
+            connect_lock.root.lock(self.filename, 1)
+            connect_lock.close()
             host = hosts[i]
             if not ping(host[0], host[1]):
                 host = self.get_minions()
@@ -238,10 +238,10 @@ class Coordinator:
             os.remove(f'/tmp/dftp/{o_name}')
             c.close()
 
-            lock = self.get_lock()
-            c = rpyc.connect(lock[0], lock[1])
-            c.root.remove_lock(self.filename, 2)
-            c.close()
+            # lock = self.get_lock()
+            # c = rpyc.connect(lock[0], lock[1])
+            # c.root.remove_lock(self.filename, 2)
+            # c.close()
 
             self.filename = None
             self.package_count = 1
@@ -419,10 +419,10 @@ class Coordinator:
             hosts[block_id] = host
 
         for i in hosts:
-            lock_dht = self.get_lock()
-            c = rpyc.connect(lock_dht[0], lock_dht[1])
-            l_t = c.root.lock(file, 3)
-            c.close()
+            # lock_dht = self.get_lock()
+            # c = rpyc.connect(lock_dht[0], lock_dht[1])
+            # c.root.lock(file, 3)
+            # c.close()
             j = self.get_minions()
             if ping(hosts[i][0], hosts[i][1]):
                 j = hosts[i]
@@ -458,7 +458,9 @@ class Coordinator:
         c.close()
         return True        
 
-    def open(self, filename, mode):   
+    def open(self, filename, mode):
+        if self.filename:
+            return False
         self.filename = filename
         self.mode = mode
         flag = 1

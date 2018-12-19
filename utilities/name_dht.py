@@ -3,7 +3,7 @@ import address as address
 from misc import uhash, recv_multicast, send_multicast
 from threading import Thread, Lock
 import sys, pathlib, os
-from chord import Node
+from chord import Node, Deamon
 import time
 import pickle
 from config import *
@@ -34,7 +34,6 @@ def create_chord(name, host,follower):
     node.start()
 
 def start_name_service(ip, port, follower_ip=None, follower_port=None):
-
     t = Thread(target=create_dht, args=(ip, port))
     t.start()
     time.sleep(2)
@@ -70,6 +69,7 @@ class DHTService(rpyc.Service):
         self.path = PATH
         self.hash_table = {}
         self.replicate = {}
+        Deamon(self, 'clear_backup').start()
         # self.launch_json()
         # Thread(target=self.send_MC).start()
 
@@ -139,10 +139,9 @@ class DHTService(rpyc.Service):
         # self.save_json(self.hash_table, aux)
         # self.save_json(self.replicate, replicate)
 
-    # def exposed_clear(self):
-    #     f = open(self.replicate, 'w')
-    #     json.dump({}, f)
-    #     f.close()
+    @repeat_and_sleep(600)
+    def clear_backup(self):
+        self.replicate = {}
 
     def exposed_give_key_from(self, min, max):
         aux = {}

@@ -23,6 +23,7 @@ class FTPServer(Thread):
 
     def __init__(self, cmd_sock, address, file_system):
         Thread.__init__(self)
+        self.shutdown = False
         self.authenticated = False
         self.pasv_mode     = False
         self.rest          = False
@@ -32,9 +33,10 @@ class FTPServer(Thread):
         self.file_system = file_system
 
     def run(self):
-
         self.sendCommand('220 Welcome to server.\r\n')
         while True:
+            if self.shutdown:
+                break
             try:
                 data = self.cmd_sock.recv(1024).rstrip()
                 try:
@@ -45,6 +47,10 @@ class FTPServer(Thread):
                 if not cmd:
                     break
             except socket.error as err:
+                if str(err) == 'timed out':
+                    self.sendCommand('221 Closing ftp, time out.\r\n')
+                    log('Closing FTP', 'time out')
+                    break
                 log('Received', err)
 
             try:
@@ -371,6 +377,7 @@ class FTPServer(Thread):
     def QUIT(self, arg):
         log('QUIT', arg)
         self.sendCommand('221 Goodbye.\r\n')
+        self.shutdown = True
 
     
 
@@ -387,6 +394,7 @@ def serverListener( ):
     log('Server started', 'Listen on: %s, %s' % listen_sock.getsockname( ))
     while True:
         connection, address = listen_sock.accept( )
+        connection.settimeout(20)
         log('Accept', 'Created a new connection %s, %s' % address)
         f = FTPServer(connection, address, Coordinator() )
         f.start()

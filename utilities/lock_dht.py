@@ -1,6 +1,6 @@
 from name_dht import DHTService
 from random import randint
-from chord import Node
+from chord import Node, Deamon
 import rpyc
 import json
 import address as address
@@ -9,7 +9,6 @@ from threading import Thread, Lock
 import sys
 import pathlib
 import os
-from chord import Node
 import time
 
 SIZE = 160
@@ -66,6 +65,7 @@ class lock_dhtService( DHTService, rpyc.Service):
     def __init__(self, name, host, PATH):
         DHTService.__init__(self, name, host, PATH)
         # Thread(target=self.clear).start()
+        Deamon(self, 'clear').start()
 
     def exposed_lock(self, key, flag):
         c = self.chord_node()
@@ -94,4 +94,4 @@ class lock_dhtService( DHTService, rpyc.Service):
     #consultar
     @repeat_and_sleep(5)
     def clear(self):
-        self.save_json(self.hash_table,{})
+        self.hash_table = {}
