@@ -8,7 +8,7 @@ import time
 from file_system.config import *
 
 HOST = '0.0.0.0'
-PORT = 23230
+PORT = 21
 # CWD = os.getenv('HOME')
 CWD = os.path.sep
 
@@ -323,7 +323,7 @@ class FTPServer(Thread):
         self.startDataSock( )
         # print('file openado')
         while True:
-            data = self.dataSock.recv(1024)
+            data = self.dataSock.recv(20*1024)
             # print('recive {}'.format(data))
             if not data: break
             self.file_system.write(data)
