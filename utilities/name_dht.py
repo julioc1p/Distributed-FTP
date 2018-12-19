@@ -62,7 +62,7 @@ class DHTService(rpyc.Service):
         self.name = name
         DATA = PATH
         REPL = PATH
-        hash = uhash(f'{host.ip}:{host.port + 1}')
+        self.hash = uhash(f'{host.ip}:{host.port + 1}')
         DATA += str(hash) + '_data.json'
         REPL += str(hash) + '_repl.json'
         self.chord_node = host
@@ -132,7 +132,8 @@ class DHTService(rpyc.Service):
         for i in self.replicate:
             if self.inrange(uhash(i), min, max + 1) and i not in aux:
                 aux[i] = self.replicate[i]
-        for i in aux:
+        self.hash_table = aux
+        for i in self.hash_table:
             if i in self.replicate:
                 self.replicate.pop(i)
         # self.save_json(self.hash_table, aux)
@@ -161,11 +162,11 @@ class DHTService(rpyc.Service):
         # hash_table = self.open_json(self.hash_table)
         #preguntar a juan jose
         for i in keys:
-            if i not in self.hash_table or self.hash_table[i][0] > int(keys[i][0]):
+            if i not in self.hash_table or self.hash_table[i][0] < int(keys[i][0]):
                 self.hash_table[i] = keys[i]
         # self.save_json(self.hash_table, keys
 
-    def exposed_backup(self, data):
+    def exposed_backup(self, addr, data):
         # replicate = self.open_json(self.replicate)
         for i in data:
             if i not in self.replicate or self.replicate[i][0] < int(data[i][0]):
@@ -173,13 +174,14 @@ class DHTService(rpyc.Service):
         # self.save_json(self.replicate, replicate)
 
     def exposed_start_backup(self, dhts):
+        addr = (self.chord_node.ip, self.chord_node.port+1)
         for i in dhts:
             if i.ip == self.chord_node.ip and i.port + 1 == self.chord_node.port + 1:
                 return
             c = rpyc.connect(i.ip, i.port+1)
             # hash_table = self.open_json(self.hash_table)
             t = self.hash_table.copy()
-            c.root.backup(t)
+            c.root.backup(addr, t)
             c.close()
 
     def exposed_hash_table(self):
@@ -205,11 +207,9 @@ class DHTService(rpyc.Service):
         c = self.chord_node()
         h = c.find_successor(uhash(key))
         c = rpyc.connect(h.ip, port=h.port + 1)
-        value = c.root.get()
+        value = c.root.get(key)
         c.close()
-        if not value:
-            return None
-        return tuple(value)
+        return value
 
     def exposed_set_key(self, key, value):
         c = self.chord_node()

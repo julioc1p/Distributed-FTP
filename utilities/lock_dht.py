@@ -86,16 +86,10 @@ class lock_dhtService( DHTService, rpyc.Service):
         c = self.chord_node()
         h = c.find_successor(uhash(key))
         c = rpyc.connect(h.ip, port=h.port + 1)
-        if c.root.check_lock(flag, key):
+        if c.root.get(key)[1] == flag:
             c.root.remove(key)
+            print('lock removido')
         c.close()
-
-    def exposed_check_lock(self, lock, key):
-        c = self.chord_node()
-        h = c.find_successor(uhash(key))
-        c = rpyc.connect(h.ip, port=h.port + 1)
-        h = c.root.get(key)
-        return h == lock
 
     #consultar
     @repeat_and_sleep(5)

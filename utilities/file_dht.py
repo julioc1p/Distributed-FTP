@@ -50,18 +50,160 @@ class file_dhtService(DHTService, rpyc.Service):
 
     def __init__(self, name, host, PATH):
         DHTService.__init__(self, name, host, PATH)
+        self.path = PATH
+        self.data_path = PATH + str(self.hash) + 'data/'
+        self.backup_path = PATH + str(self.hash) + 'backup/'
+        self.init_paths()
 
-    def exposed_set_key(self, key, value):
-        c = self.chord_node()
-        h = c.find_successor(uhash(key))
-        c = rpyc.connect(h.ip, port=h.port + 1)
-        c.root.set(key, value)
+
+    def init_paths(self):
+        try:
+            os.mkdir(self.path)
+        except:
+            pass
+        try:
+            os.mkdir(self.data_path)
+        except:
+            pass
+        try:
+            os.mkdir(self.backup_path)
+        except:
+            pass
+
+    def delete_data(self, key):
+        name = str(uhash(self.hash_table[key][1])) + '.jjc'
+        if not os.path.exists(self.data_path + name):
+            return False
+        os.remove(self.data_path + name)
+        return True
+
+    def delete_backup(self, key):
+        name = str(uhash(self.replicate[key][1])) + '.jjc'
+        if not os.path.exists(self.backup_path + name):
+            return False
+        os.remove(self.backup_path + name)
+        return True
+
+    def set_data(self, key, data):
+        # self.l.acquire()
+        path = self.data_path + str(uhash(key)) + '.jjc'
+        fs = open(path, 'wb')
+        fs.write(data)
+        fs.close()
+        # self.l.release()
+        return True
+
+    def get_data(self, key):
+        if not key in self.hash_table:
+            return None
+        # self.l.acquire()
+        path = self.data_path + str(uhash(self.hash_table[key][1])) + '.jjc'
+        fs = open(path, 'rb')
+        data = fs.read()
+        fs.close()
+        # self.l.release()
+        return data
+
+    def set_backup(self, key, data):
+        # self.l.acquire()
+        path = self.backup_path + str(uhash(key)) + '.jjc'
+        fs = open(path, 'wb')
+        fs.write(data)
+        fs.close()
+        # self.l.release()
+        return True
+
+    def get_backup(self, key):
+        if not key in self.replicate:
+            return None
+        # self.l.acquire()
+        path = self.data_path + str(uhash(self.replicate[key][1])) + '.jjc'
+        fs = open(path, 'rb')
+        data = fs.read()
+        fs.close()
+        # self.l.release()
+        return data
+
+    def exposed_get_data(self, key):
+        return self.get_data(key)
+
+    def exposed_verify_interval(self, min, max):
+        aux = {}
+        # hash_table = self.open_json(self.hash_table)
+        # replicate = self.open_json(self.replicate)
+        for i in self.hash_table:
+            if not self.inrange(uhash(i), min, max + 1):
+                aux[i] = self.hash_table[i]
+                self.delete_data(i)
+        for i in self.replicate:
+            if self.inrange(uhash(i), min, max + 1):
+                aux[i] = self.replicate[i]
+                self.delete_backup(i)
+        self.hash_table = aux
+        for i in self.hash_table:
+            if i in self.replicate:
+                self.replicate.pop(i)
+        # self.save_json(self.hash_table, aux)
+        # self.save_json(self.replicate, replicate)
+
+    def exposed_give_key_from(self, min, max):
+        aux = {}
+        # hash_table = self.open_json(self.hash_table)
+        for i in self.hash_table:
+            if self.inrange(uhash(i), min, max + 1):
+                aux[i] = self.hash_table[i]
+        for i in aux:
+            yield (i, aux[i][0])
+        #esta ultima iteracion es para removerlos de data
+        for i in aux:
+            self.delete_data(i)
+            self.hash_table.pop(i)
+        # r = json.dumps(aux)
+        # return pickle.dumps(aux)
+
+    def exposed_get_keys_from(self, address, min, max):
+        connection = rpyc.connect(address.ip, port=address.port+1)
+        # keys = connection.root.give_key_from(min, max)
+        # keys = pickle.loads(keys)
+        # hash_table = self.open_json(self.hash_table)
+        #preguntar a juan jose
+        for item in connection.root.give_key_from(min, max):
+            i = item[0]
+            if i not in self.hash_table or self.hash_table[i][0] < int(item[1]):
+                data = connection.root.get_data(i)
+                self.hash_table[i] = (item[1], i)
+                self.set_data(i, data)
+        # self.save_json(self.hash_table, keys
+
+    def exposed_backup(self, addr, data):
+        c = rpyc.connect(addr[0], addr[1])
+        for i in data:
+            if i not in self.replicate or self.replicate[i][0] < int(data[i][0]):
+                self.replicate[i] = data[i]
+                data_ = c.root.get_data(i)
+                self.set_backup(i, data_)
         c.close()
+                
 
-    # def exposed_remove_key(self, key):
-    #     c = self.chord_node()
-    #     h = c.find_successor(uhash(key))
-    #     c = rpyc.connect(h.ip, port=h.port + 1)
-    #     has = c.root.del_key(key)
-    #     c.close()
-    #     return has
+    def exposed_get(self, key):
+        if not key in self.hash_table:
+            return None
+        return (self.hash_table[key][0], self.get_data(key))
+
+    def exposed_set(self, key, value):
+        # hash_table = self.open_json(self.hash_table)
+        key = str(key)
+        if key not in self.hash_table:
+            self.hash_table[key] = (1, key)
+        else:
+            self.hash_table[key] = (self.hash_table[key][0] + 1, key)
+        self.set_data(key, value)
+        # self.save_json(self.hash_table, hash_table)
+
+    def exposed_remove(self, key):
+        if key not in self.hash_table:
+            return None
+        data = self.get_data(key)
+        self.delete_data(key)
+        r = self.hash_table[key]
+        return (r[0], data)
