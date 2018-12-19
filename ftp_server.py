@@ -332,6 +332,46 @@ class FTPServer(Thread):
         self.stopDataSock( )
         self.sendCommand('226 Transfer completed.\r\n')
 
+    def NOOP(self, cmd):
+        log('NOOP', cmd)
+        self.sendCommand('200 OK')
+
+    def SYST(self, arg):
+        log('SYS', arg)
+        self.sendCommand('215 %s type.\r\n' % sys.platform)
+
+    def HELP(self, arg):
+        log('HELP', arg)
+        help = """
+            214
+            USER [name], Its argument is used to specify the user's string. It is used for user authentication.
+            PASS [password], Its argument is used to specify the user password string.
+            PASV The directive requires server-DTP in a data port.
+            PORT [h1, h2, h3, h4, p1, p2] The command parameter is used for the data connection data port
+            LIST [dirpath or filename] This command allows the server to send the list to the passive DTP. If
+                 the pathname specifies a path or The other set of files, the server sends a list of files in
+                 the specified directory. Current information if you specify a file path name, the server will
+                 send the file.
+            CWD Type a directory path to change working directory.
+            PWD Get current working directory.
+            CDUP Changes the working directory on the remote host to the parent of the current directory.
+            DELE Deletes the specified remote file.
+            MKD Creates the directory specified in the RemoteDirectory parameter on the remote host.
+            RETR This command allows server-FTP send a copy of a file with the specified path name to the data
+                 connection The other end.
+            STOR This command allows server-DTP to receive data transmitted via a data connection, and data is
+                 stored as A file server site.
+            SYS  This command is used to find the server's operating system type.
+            HELP Displays help information.
+            QUIT This command terminates a user, if not being executed file transfer, the server will shut down
+                 Control connection\r\n.
+            """
+        self.sendCommand(help)
+
+    def QUIT(self, arg):
+        log('QUIT', arg)
+        self.sendCommand('221 Goodbye.\r\n')
+
     
 
 def start_ftp():
