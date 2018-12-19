@@ -60,6 +60,7 @@ class Node(object):
         self.join(other_node)
         self.type = chord_type
         self.successors_ = []
+        self.history_ = []
 
 
     def address(self):
@@ -91,14 +92,17 @@ class Node(object):
         else:
             return id >= min or id < max
 
+    def add_to_history(self, addr):
+        if not addr in self.history_:
+            self.history_.append(addr)
+
     def start(self):
         Deamon(self, 'start_local_server').start()
-        # Deamon(self, 'inform').start()
         Deamon(self, 'fix_fingers').start()
         Deamon(self, 'stabilize').start()
         Deamon(self, 'update_successors').start()
         Deamon(self, 'replicate').start()
-        # Deamon(self,  'discover').start()
+        Deamon(self,  'discover').start()
         # Deamon(self, 'clear_replicate').start()
 
     def start_local_server(self):
@@ -115,6 +119,7 @@ class Node(object):
 
             succ = self.finger_[0]()    
             pred_id = succ.predeccessor().id
+            
             dht = rpyc.connect(self.address_.ip, self.address_.port+1)
             dht.root.get_keys_from(self.finger_[0], self.modulate(pred_id, 1), self.id())
             dht.close()
@@ -130,9 +135,11 @@ class Node(object):
     def successor(self):
         if self.ping(self.finger_[0]):
             return self.finger_[0]
+        self.add_to_history(self.finger_[0])
         for succ in self.successors_:
             if self.ping(succ):
                 return succ
+            self.add_to_history(addr)
         return self.address_
 
     def find_successor(self, id):
@@ -230,24 +237,21 @@ class Node(object):
         except:
             pass
 
-    @repeat_and_sleep(TIME_INF)
-    def inform(self):
-        data = json.dumps({'name':self.type, 'ip':self.address_.ip, 'port':self.address_.port
-        , 'id':self.address_.id})
-        send_multicast(data)
-
-    @repeat_and_sleep(TIME_DISC)
+    @repeat_and_sleep(TIME_STB)
     def discover(self):
-        try:
-            data = json.loads(recv_multicast())
-            if data['name'] == self.type:
-                id = int(data['id'])
-                node = NodeKey(data['ip'], int(data['port']))
-                if self.inrange(id, self.id(), self.successor().id):
-                    self.finger_[0] = node
-                    self.successors_ = [self.finger_[0]] + self.successors_[:SUCCSSIZE-1]
-        except:
-            pass
+        if not len(self.history_):
+            return
+        index = random.randint(0, len(self.history_)-1)
+        addr = self.history_[index]
+        if self.ping(addr):
+            self.history_.remove(add)
+            succ = self.successor()
+            x = addr()
+            if x and self.inrange(x.id, self.id(1), succ.id):
+                self.finger_[0] = x 
+                self.successors_ = [self.finger_[0]] + self.successors_[:SUCCSSIZE-1]
+            succ().notify(self.address_)
+            return True
 
     def hey(self):
         print('Hey!, I am node {}, my successor is {} and my predeccessor {}'

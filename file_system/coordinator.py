@@ -10,6 +10,17 @@ import os
 import stat
 from file_system.misc import uhash
 from config import *
+from threading import Thread
+
+class Deamon(Thread):
+
+    def __init__(self, obj, method):
+        Thread.__init__(self)
+        self.obj_ = obj
+        self.method_ = method
+
+    def run(self):
+        getattr(self.obj_, self.method_)()
 
 
 log = logging.getLogger('coordinator')
@@ -86,6 +97,16 @@ def fileProperty(filepath):
     return ' '.join(fileMessage)
 
 
+def repeat_and_sleep(i):
+    def func(f):
+        def wrapper(*args, **kargs):
+            while True:
+                time.sleep(i)
+                f(*args, **kargs)
+        return wrapper
+    return func
+
+
 class Coordinator:
     
     block_size = 5
@@ -93,6 +114,7 @@ class Coordinator:
 
     def __init__(self):
         self.package_count = 1
+        self.filename = None
         if not self.exist(os.path.sep):
             dht = self.get_name()
             c = rpyc.connect(dht[0],dht[1])
@@ -102,6 +124,36 @@ class Coordinator:
             os.mkdir('/tmp/dftp')
         except:
             pass
+        Deamon(self, 'discover').start()
+
+    @repeat_and_sleep(60)
+    def discover(self):
+        minion = random.sample(minions_cache,1)[0]
+        if not ping(minion[0], minion[1]):
+            minions_cache.remove(minion)
+        else:
+            minion = rpyc.connect(minion[0], minion[1])
+            host = minion.get_succ()
+            minions_cache.append(host)
+            minion.close()
+
+        minion = random.sample(lock_cache,1)[0]
+        if not ping(minion[0], minion[1]):
+            minions_cache.remove(minion)
+        else:
+            minion = rpyc.connect(minion[0], minion[1])
+            host = minion.get_succ()
+            minions_cache.append(host)
+            minion.close()
+
+        minion = random.sample(dht_cache, 1)[0]
+        if not ping(minion[0], minion[1]):
+            minions_cache.remove(minion)
+        else:
+            minion = rpyc.connect(minion[0], minion[1])
+            host = minion.get_succ()
+            minions_cache.append(host)
+            minion.close()
 
     def get_minions(self):
         for i in minions_cache:

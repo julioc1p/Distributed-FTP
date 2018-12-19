@@ -20,6 +20,11 @@ def recv_MC(name):
             return
     return None
 
+def exposed_get_succ(self):
+    host =  self.chord_node().successor()
+    ip, port = host.ip, host.port
+    return ip,port
+
 def create_dht(ip, port):
     host = address.NodeKey(ip, port)
     PATH = f'{pathlib.Path.home()}/.dftp/names/'
