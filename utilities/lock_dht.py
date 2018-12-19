@@ -3,13 +3,20 @@ from random import randint
 from chord import Node, Deamon
 import rpyc
 import json
-import address as address
+import address
 from misc import uhash, recv_multicast, send_multicast
 from threading import Thread, Lock
 import sys
 import pathlib
 import os
 import time
+import Pyro4
+
+def convert(classname, dict):
+    return address.NodeKey(dict['ip'], dict['port'])
+
+
+Pyro4.util.SerializerBase.register_dict_to_class('address.NodeKey', convert)
 
 SIZE = 160
 NODE_AMOUNT = 1 << SIZE

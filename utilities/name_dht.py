@@ -1,5 +1,5 @@
 import rpyc, json
-import address as address
+import address
 from misc import uhash, recv_multicast, send_multicast
 from threading import Thread, Lock
 import sys, pathlib, os
@@ -7,6 +7,13 @@ from chord import Node, Deamon
 import time
 import pickle
 from config import *
+import Pyro4
+
+def convert(classname, dict):
+    return address.NodeKey(dict['ip'], dict['port'])
+
+
+Pyro4.util.SerializerBase.register_dict_to_class('address.NodeKey', convert)
 
 def recv_MC(name):
     i = 10
@@ -19,11 +26,6 @@ def recv_MC(name):
         except:
             return
     return None
-
-def exposed_get_succ(self):
-    host =  self.chord_node().successor()
-    ip, port = host.ip, host.port
-    return ip,port
 
 def create_dht(ip, port):
     host = address.NodeKey(ip, port)
@@ -75,6 +77,12 @@ class DHTService(rpyc.Service):
         self.hash_table = {}
         self.replicate = {}
         Deamon(self, 'clear_backup').start()
+
+
+    def exposed_get_succ(self):
+        host = self.chord_node().successor()
+        ip, port = host.ip, host.port
+        return ip, port
 
     def exposed_verify_interval(self, min, max):
         aux = {}

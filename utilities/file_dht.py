@@ -3,7 +3,7 @@ from random import randint
 from chord import Node
 import rpyc
 import json
-import address as address
+import address
 from misc import uhash, recv_multicast, send_multicast
 from threading import Thread, Lock
 import sys
@@ -12,14 +12,21 @@ import os
 from chord import Node
 import time
 from config import *
+import Pyro4
 
+def convert(classname, dict):
+    return address.NodeKey(dict['ip'], dict['port'])
+
+
+Pyro4.util.SerializerBase.register_dict_to_class('address.NodeKey', convert)
 
 
 def create_dht(ip, port):
     host = address.NodeKey(ip, port)
-    PATH = f'{pathlib.Path.home()}/.dftp/files/'
-    dht_server = rpyc.ThreadedServer(file_dhtService('file', host, PATH), port=host.port + 1)
-    print('\n', dht_server, '\n')
+    PATH = f'{pathlib.Path.home()}/.dftp/names/'
+    dht_server = rpyc.ThreadedServer(DHTService(
+        'name', host, PATH), port=host.port + 1)
+    print('\n', uhash(f'{ip}:{port+1}'), dht_server, '\n')
     dht_server.start()
 
 
@@ -30,7 +37,6 @@ def create_chord(name, host, follower):
 
 
 def start_file_service(ip, port, follower_ip=None, follower_port=None):
-
     t = Thread(target=create_dht, args=(ip, port))
     t.start()
     time.sleep(2)
@@ -39,8 +45,9 @@ def start_file_service(ip, port, follower_ip=None, follower_port=None):
         follower = None
     else:
         follower = address.NodeKey(follower_ip, follower_port)
-    tc = Thread(target=create_chord, args=('file_chord', host, follower))
+    tc = Thread(target=create_chord, args=('name_chord', host, follower))
     tc.start()
+
 
 
 class file_dhtService(DHTService, rpyc.Service):
@@ -153,6 +160,7 @@ class file_dhtService(DHTService, rpyc.Service):
 
     def exposed_get_keys_from(self, address, min, max):
         connection = rpyc.connect(address.ip, port=address.port+1)
+        for item in connection.root.give_key_from(min, max):
             i = item[0]
             if i not in self.hash_table or self.hash_table[i][0] < int(item[1]):
                 data = connection.root.get_data(i)
